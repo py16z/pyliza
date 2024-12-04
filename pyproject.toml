@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "soltoshi"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+openai = "^1.52.0"
+python-dotenv = "^1.0.1"
+textblob = "^0.18.0.post0"
+discord-py = "^2.4.0"
+fastapi = {extras = ["standard"], version = "^0.115.2"}
+chromadb = "^0.5.15"
+together = "^1.3.3"
+firecrawl = "^1.4.0"
+anthropic = "^0.37.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
