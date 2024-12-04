@@ -1,0 +1,10 @@
+.env
+*.pyc
+*.json
+
+.venv
+
+*.bin
+
+chromadb
+.DS_Store

@@ -10,6 +10,8 @@ class TwitterInteractionHandler:
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
         self.chroma_client = chroma_client
+        # Only tweet for responses X hours after the interaction handler is initialized
+        self.start_time = datetime.now() - datetime.timedelta(hours=2)
         self.search_terms = ["@0xricebowl"]
         
         
@@ -78,10 +80,8 @@ class TwitterInteractionHandler:
         try:
             # Use the same search query format that works in your test
             search_response = self.client.search_tweets(searchTerm, max_tweets=20)
-            
             # Add debug logging to help diagnose
             print(f"Raw search response: {json.dumps(search_response, indent=2)}")
-            
             if not search_response:
                 print("No new mentions found")
                 return
@@ -96,6 +96,11 @@ class TwitterInteractionHandler:
             for tweet in tweets:
                 tweet_id = tweet['id']
                 
+                tweet_created_at = datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S %z %Y')
+                if tweet_created_at < self.start_time:
+                    print(f"Skipping tweet {tweet_id} because it was created before the interaction handler was initialized")
+                    continue
+
                 # Skip if we've already responded to this tweet
                 if self.has_responded_to_tweet(tweet_id):
                     print(f"Already responded to tweet {tweet_id}")
