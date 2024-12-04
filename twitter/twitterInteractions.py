@@ -3,18 +3,20 @@ import time
 from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 import os
+import random
 from datetime import timezone
 from helpers import getTweetResponsePrompt
 
 class TwitterInteractionHandler:
-    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[]):
+    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[]):
         self.client = twitter_client
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
         self.chroma_client = chroma_client
         # Make start_time timezone-aware
         self.start_time = datetime.now(timezone.utc) - timedelta(hours=24)
-        self.search_terms = ["@@aixbt_agent"]
+        self.search_terms = search_terms
+        self.reply_targets = reply_targets
         
     def load_last_checked_tweet_id(self) -> Optional[int]:
         """Load the ID of the last checked tweet from file"""
@@ -58,10 +60,15 @@ class TwitterInteractionHandler:
         try:
             client = self.chroma_client
             collection = client.get_or_create_collection("tweet_responses")
-            results = collection.query(
-                query_texts=[tweet_id],
-                n_results=1
+            results = collection.get(
+                ids = [tweet_id]
             )
+            print(results["ids"])
+            if len(results["ids"]) > 0:
+                return True
+            else:
+                return False
+
         except (FileNotFoundError, json.JSONDecodeError):
             return False
 
@@ -73,14 +80,15 @@ class TwitterInteractionHandler:
         """Generate a response using the provided response generator"""
         return self.response_generator(tweet_text, additionalContext=additionalContext)
 
-    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = ""):
+    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 3):
         """Check for new mentions and respond to them"""
         username = os.getenv('TWITTER_USERNAME')
         print(f"Checking mentions for @{username}")
+        nResponses = 0
         
         try:
             search_response = self.client.search_tweets(searchTerm, max_tweets=20)
-            print(f"Raw search response: {json.dumps(search_response, indent=2)}")
+            #print(f"Raw search response: {json.dumps(search_response, indent=2)}")
             if not search_response:
                 print("No new mentions found")
                 return
@@ -115,15 +123,17 @@ class TwitterInteractionHandler:
                 # Generate and send response
                 response_text = self.generate_response(tweetPrompt, additionalContext=additionalContext)
                 print("RESPONSE TEXT: ", response_text)
-
-                #response = self.client.send_tweet(response_text, tweet_id)
-                responseId = "XOXOXOX"
+                nResponses += 1
+                response = self.client.send_tweet(response_text, tweet_id)
                 
+                # TO DO -> get actual 
+                responseId = "PLACEHOLDER"
                 ### Log Response to Chroma DB
                 self.log_response(original_tweet_id=tweet_id, response_tweet_id=responseId, tweet_content=tweetContent, response_text=response_text)
                 # Wait a bit between responses to avoid rate limiting
-                time.sleep(5)
-                
+                if nResponses >= maxReplies:
+                    break                
+
         except Exception as e:
             print(f"Error checking mentions: {str(e)}")
 
@@ -134,8 +144,27 @@ class TwitterInteractionHandler:
         try:
             for searchTerm in self.search_terms:
                 self.check_mentions(searchTerm, additionalContext=additionalContext)
-                bufferInterval = 5
-                time.sleep(bufferInterval)
-            time.sleep(check_interval)  # Wait between checks
+
+            print("Finished mention monitoring loop")
+
+        except Exception as e:
+            print(f"Error in mention monitoring loop: {str(e)}")
+
+    def reply_guy(self, check_interval: int = 120, additionalContext: str = ""):
+        print("Starting monitoring reply guy targets...")
+        
+        try:
+            # Check if reply_targets is not empty
+            if not self.reply_targets:
+                print("No reply targets available.")
+                return
+            
+            # randomly select a reply target
+            reply_target = random.choice(self.reply_targets)
+            searchTerm = reply_target["searchTerm"]
+            searchContext = reply_target["searchContext"]
+
+            self.check_mentions(searchTerm, additionalContext=additionalContext, searchContext=searchContext)
+
         except Exception as e:
             print(f"Error in mention monitoring loop: {str(e)}")

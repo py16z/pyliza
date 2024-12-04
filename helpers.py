@@ -39,6 +39,9 @@ else :
      embeddingClient = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def getAgentPrompt(): 
+    thoughtProcess = json.load(open("initial_thoughts.json"))
+    thoughts = thoughtProcess["thought_process"]
+
 
     prompt = f"""
     You are {config.name}, 
@@ -47,6 +50,9 @@ def getAgentPrompt():
     You have the following goals: {config.goals}.
     You have the following personality: {config.personality}.
     You have the following way of responding / speaking : {config.speech}
+
+    Your current thought process is : {thoughts}
+
     """
     return prompt
 
@@ -179,15 +185,14 @@ def fetch_context(chromaClient, collection, message, n=3):
         return ""
 
 
-def log_message(chromaClient, message, response, user="user") : 
+def log_message(chromaClient, message, user="user") : 
     # Here we want to log message into Chroma 
     #input = message + " \n" + "response from " + user + " : " + response
-    input = response
 
     try : 
-        collection = chromaClient.get_collection("pastInteractions")
+        collection = chromaClient.get_or_create_collection("pastInteractions")
         n = len(collection.get()["documents"])
-        collection.add(documents=[input], metadatas=[{"user": user}], ids=[str(n + 1) + "_" + str(int(time.time()))])
+        collection.add(documents=[message], metadatas=[{"user": user}], ids=[str(n + 1) + "_" + str(int(time.time()))])
     except Exception as e:
         print(e)
 
@@ -227,8 +232,70 @@ def getTweetResponsePrompt(tweetContent, sender, searchContext):
      {searchContext}
      The tweet content is : {tweetContent}
 
+     When tweeting consider the below tweet style instructions 
+     <tweetStyle>
+          never use hashtags or emojis
+          response should be short, punchy, and to the point
+          don't say ah yes or oh or anything
+          don't ask rhetorical questions, its lame
+          occassionally you'll ask provocative / controversial questions
+          use lowercase most of the time
+          you like to go deep down the rabbithole....
+     </tweetStyle>
+
      Post your response tweet below 
      Stay true to your personality and goals.
 
      """
      return prompt
+
+
+def prepareContext(message, chromaClient,includeHistory=True, includeDocs=True, collectionName="docs", includeUser=False, userId = "user", includeScrapedContext=True):
+     context = ""
+     if includeHistory: 
+          context += fetch_history(chromaClient)
+     if includeDocs: 
+          try : 
+               docContext = fetch_context(chromaClient, collectionName, message)
+               if docContext != "": 
+                    context += f"\n<context> The below is information from {collectionName} "
+                    context += docContext
+          except Exception as e:
+               print(e)
+     if includeUser: 
+          userContext = ""
+          #TO DO - have some mechanics to store information about users 
+          context += "You are responding to {user}"
+     if includeScrapedContext: 
+          try : 
+               scrapedContext = json.load(open("context.json"))
+               context += "\n<context> The below is information scraped from the web  "
+               for item in scrapedContext["context"] : 
+                    context += item + "\n"
+
+               context += "</context>"
+          except Exception as e:
+               print(e)
+
+     return context
+
+
+def reflectThoughts(additionalContext = ""):
+     thoughtProcess = json.load(open("initial_thoughts.json"))
+     thoughts = thoughtProcess["thought_process"]
+
+     thoughtPrompt = f"""
+     This is your thought process : {thoughts}
+     take into account the information provided along with the history of previous interactions
+
+     Based on this generate an updated thought process
+
+     """
+
+     response = getResponse(thoughtPrompt, additionalContext=additionalContext)
+
+     thoughtProcess["thought_process"] = response
+     json.dump(thoughtProcess, open("initial_thoughts.json", "w"))
+     print("Updated Thought Process: ", response)
+     
+
