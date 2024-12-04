@@ -90,16 +90,11 @@ async def search_tweets():
             chroma_client=chromaClient
         )
 
-        # Search for tweets
-        tweets = client.search_tweets("@0xricebowl", max_tweets=20)
-        print(f"\nFound {len(tweets)} tweets")
-        for tweet in tweets:
-            print(f"\n@{tweet['username']}: {tweet['text']}")
-            
         interaction_handler = TwitterInteractionHandler(
             client,
             response_generator=getResponse,
-            chroma_client=chromaClient
+            chroma_client=chromaClient,
+            search_terms=config.search_terms
         )
         interaction_handler.monitor_mentions()
 

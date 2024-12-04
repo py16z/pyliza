@@ -7,6 +7,7 @@ embeddingModel = 'togethercomputer/m2-bert-80M-8k-retrieval'
 ### Tweet Config ###
 searchFrequency = 120 # seconds
 postFrequency = 600 # seconds
+search_terms = ["@aixbt_agent"]
 
 ### Scrape Config ###
 scrapeLinks = False

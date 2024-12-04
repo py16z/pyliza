@@ -17,6 +17,7 @@ load_dotenv()
 import json
 
 
+
 if config.use_anthropic:
         client = Anthropic(
             api_key=os.getenv("ANTHROPIC_API_KEY"),
@@ -79,6 +80,12 @@ def getAnthropicResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6)
 def getResponse(prompt, additionalContext="", temperature=0.7, top_p=0.6):
      agentPrompt = getAgentPrompt()
      print("Generating Response.........")
+
+     context = json.load(open("context.json"))
+
+     for item in context["context"] : 
+          additionalContext += item + "\n"
+
      if additionalContext != "": 
           agentPrompt += f"\n\n Here is some additional context: {additionalContext}"
 
@@ -212,3 +219,16 @@ def fetch_history(chromaClient, maxLength=2500):
           return chat_history_string
     except:
         return ""
+
+
+def getTweetResponsePrompt(tweetContent, sender, searchContext):
+     prompt = f"""
+     You are responding to a tweet from {sender}
+     {searchContext}
+     The tweet content is : {tweetContent}
+
+     Post your response tweet below 
+     Stay true to your personality and goals.
+
+     """
+     return prompt

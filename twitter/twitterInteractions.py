@@ -4,17 +4,17 @@ from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 import os
 from datetime import timezone
+from helpers import getTweetResponsePrompt
 
 class TwitterInteractionHandler:
-    def __init__(self, twitter_client, response_generator=None, chroma_client=None):
+    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[]):
         self.client = twitter_client
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
         self.chroma_client = chroma_client
         # Make start_time timezone-aware
         self.start_time = datetime.now(timezone.utc) - timedelta(hours=24)
-        self.search_terms = ["@0xricebowl"]
-        
+        self.search_terms = ["@@aixbt_agent"]
         
     def load_last_checked_tweet_id(self) -> Optional[int]:
         """Load the ID of the last checked tweet from file"""
@@ -69,11 +69,11 @@ class TwitterInteractionHandler:
         """Default response if no response generator is provided"""
         return "Hi there! I'm Rice "
 
-    def generate_response(self, tweet_text: str) -> str:
+    def generate_response(self, tweet_text: str, additionalContext: str = "") -> str:
         """Generate a response using the provided response generator"""
-        return self.response_generator(tweet_text)
+        return self.response_generator(tweet_text, additionalContext=additionalContext)
 
-    def check_mentions(self, searchTerm : str):
+    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = ""):
         """Check for new mentions and respond to them"""
         username = os.getenv('TWITTER_USERNAME')
         print(f"Checking mentions for @{username}")
@@ -111,8 +111,9 @@ class TwitterInteractionHandler:
                 print(f"Processing tweet {tweet_id} from @{tweet['username']}")
                 tweetContent = tweet['text']
                 print("TWEET CONTENT: ", tweetContent)
+                tweetPrompt = getTweetResponsePrompt(tweetContent, tweet['username'], searchContext=searchContext)
                 # Generate and send response
-                response_text = self.generate_response(tweetContent)
+                response_text = self.generate_response(tweetPrompt, additionalContext=additionalContext)
                 print("RESPONSE TEXT: ", response_text)
 
                 #response = self.client.send_tweet(response_text, tweet_id)
@@ -126,13 +127,13 @@ class TwitterInteractionHandler:
         except Exception as e:
             print(f"Error checking mentions: {str(e)}")
 
-    def monitor_mentions(self, check_interval: int = 120):
+    def monitor_mentions(self, check_interval: int = 120, additionalContext: str = ""):
         """Start monitoring mentions at regular intervals"""
         print("Starting mention monitoring...")
         
         try:
             for searchTerm in self.search_terms:
-                self.check_mentions(searchTerm)
+                self.check_mentions(searchTerm, additionalContext=additionalContext)
                 bufferInterval = 5
                 time.sleep(bufferInterval)
             time.sleep(check_interval)  # Wait between checks

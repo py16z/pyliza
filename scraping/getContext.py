@@ -110,7 +110,6 @@ def getContext(results, additionalContext="", useClaude=True):
 def getSummary(results, additionalContext="", useClaude=True):
     togetherModel = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
     model = "claude-3-5-sonnet-20240620"
-    contextStr = "\n<context> The below is information specically about Rise Chain - use this to help guide your response :  "
 
     sysPrompt = PROMPT + SUMMARY_TASK + EXPECTED_OUTPUT
     out = getResponseCustomAgentPrompt(results, sysPrompt, additionalContext=additionalContext)
