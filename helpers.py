@@ -97,9 +97,9 @@ def getResponseCustomAgentPrompt(prompt, agentPrompt, additionalContext="", temp
           agentPrompt += f"\n\n Here is some additional context: {additionalContext}"
 
      if config.use_anthropic: 
-          response = getAnthropicResponse(prompt, agentPrompt, config.claudeModelmodel, temperature, top_p)
+          response = getAnthropicResponse(prompt, agentPrompt, config.claudeModel, temperature, top_p)
      else: 
-          response = getOpenAIResponse(prompt, agentPrompt, config.claudeModel, temperature, top_p)
+          response = getOpenAIResponse(prompt, agentPrompt, config.model, temperature, top_p)
      #print("Response Generated: ", response)
      return response
 
