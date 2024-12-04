@@ -5,11 +5,13 @@ from datetime import datetime
 import os
 
 class TwitterInteractionHandler:
-    def __init__(self, twitter_client, response_generator=None):
+    def __init__(self, twitter_client, response_generator=None, chroma_client=None):
         self.client = twitter_client
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
-        self.chroma_client = twitter_client.chroma_client
+        self.chroma_client = chroma_client
+        self.search_terms = ["@0xricebowl"]
+        
         
     def load_last_checked_tweet_id(self) -> Optional[int]:
         """Load the ID of the last checked tweet from file"""
@@ -44,6 +46,7 @@ class TwitterInteractionHandler:
                 documents = [tweet_content],
                 metadatas = [log_entry]
             )
+            print("Successfully logged response to Chroma DB")
 
             
 
@@ -61,20 +64,23 @@ class TwitterInteractionHandler:
 
     def default_response(self, tweet_text: str) -> str:
         """Default response if no response generator is provided"""
-        return "Hi there! I'm Rice 🍚"
+        return "Hi there! I'm Rice "
 
     def generate_response(self, tweet_text: str) -> str:
         """Generate a response using the provided response generator"""
         return self.response_generator(tweet_text)
 
-    def check_mentions(self):
+    def check_mentions(self, searchTerm : str):
         """Check for new mentions and respond to them"""
         username = os.getenv('TWITTER_USERNAME')
         print(f"Checking mentions for @{username}")
         
         try:
-            # Search for tweets mentioning the username
-            search_response = self.client.search_tweets(f"@{username}", max_tweets=20)
+            # Use the same search query format that works in your test
+            search_response = self.client.search_tweets(searchTerm, max_tweets=20)
+            
+            # Add debug logging to help diagnose
+            print(f"Raw search response: {json.dumps(search_response, indent=2)}")
             
             if not search_response:
                 print("No new mentions found")
@@ -106,39 +112,26 @@ class TwitterInteractionHandler:
                 response_text = self.generate_response(tweetContent)
                 print("RESPONSE TEXT: ", response_text)
 
-                #response = self.client.send_tweet(response_text, reply_to_tweet_id=tweet_id)
-                # CREATED MOCK RESPONSE
-                response = {
-                    "id": "1234567890"
-                }
-
-                try : 
-                    response_data = response.json()
-                    response_tweet_id = response_data['id']
-                    print(f"Sent response {response_tweet_id} to tweet {tweet_id}")
-                    # Log the response
-                    self.log_response(tweet_id, response_tweet_id)
-                except Exception as e:
-                    print(f"Failed to send response to tweet {tweet_id}")
+                #response = self.client.send_tweet(response_text, tweet_id)
+                responseId = "XOXOXOX"
                 
-                # Update the last checked tweet ID
-                self.last_checked_tweet_id = max(int(tweet_id), self.last_checked_tweet_id or 0)
-                self.save_last_checked_tweet_id(self.last_checked_tweet_id)
-                
+                ### Log Response to Chroma DB
+                self.log_response(original_tweet_id=tweet_id, response_tweet_id=responseId, tweet_content=tweetContent, response_text=response_text)
                 # Wait a bit between responses to avoid rate limiting
-                time.sleep(2)
+                time.sleep(5)
                 
         except Exception as e:
             print(f"Error checking mentions: {str(e)}")
 
-    def start_mention_monitoring(self, check_interval: int = 120):
+    def monitor_mentions(self, check_interval: int = 120):
         """Start monitoring mentions at regular intervals"""
         print("Starting mention monitoring...")
         
-        while True:
-            try:
-                self.check_mentions()
-                time.sleep(check_interval)  # Wait between checks
-            except Exception as e:
-                print(f"Error in mention monitoring loop: {str(e)}")
-                time.sleep(60)  # Wait a minute before retrying on error
+        try:
+            for searchTerm in self.search_terms:
+                self.check_mentions(searchTerm)
+                bufferInterval = 5
+                time.sleep(bufferInterval)
+            time.sleep(check_interval)  # Wait between checks
+        except Exception as e:
+            print(f"Error in mention monitoring loop: {str(e)}")

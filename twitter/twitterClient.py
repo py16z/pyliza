@@ -4,8 +4,13 @@ import time
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from urllib.parse import urlencode
+import os
 
-import chromadb
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import chromadb 
 
 class TwitterClient:
     BASE_URL = "https://twitter.com"
@@ -36,8 +41,19 @@ class TwitterClient:
             "Accept": "*/*"
         })
         
-        if cookies:
-            self._setup_cookies(cookies)
+        # Set up cookies directly from environment variables
+        auth_token = os.getenv('TWITTER_COOKIES_AUTH')
+        ct0_token = os.getenv('TWITTER_COOKIES_CT0')
+        guest_id = os.getenv('TWITTER_COOKIES_GUEST_ID')
+        
+        if auth_token and ct0_token:
+            self.session.cookies.set('auth_token', auth_token, domain='.twitter.com', path='/')
+            self.session.cookies.set('ct0', ct0_token, domain='.twitter.com', path='/')
+            if guest_id:
+                self.session.cookies.set('guest_id', guest_id, domain='.twitter.com', path='/')
+            
+            # Debug print
+            print("Session cookies after setup:", self.session.cookies.get_dict())
 
     def _get_default_features(self) -> Dict[str, bool]:
         """Get default feature flags required by Twitter"""
@@ -89,7 +105,15 @@ class TwitterClient:
     def _setup_cookies(self, cookies_str: str) -> None:
         """Set up session cookies from a cookie string"""
         try:
+            # Remove single quotes if present
+            cookies_str = cookies_str.strip("'")
+            
+            # Parse the JSON string
             cookie_list = json.loads(cookies_str)
+            
+            # Debug print
+            print("Parsed cookies:", cookie_list)
+            
             for cookie in cookie_list:
                 self.session.cookies.set(
                     cookie["name"],
@@ -97,8 +121,14 @@ class TwitterClient:
                     domain=cookie.get("domain", ".twitter.com"),
                     path=cookie.get("path", "/")
                 )
-        except json.JSONDecodeError:
-            # Handle raw cookie string format
+            
+            # Debug print after setting cookies
+            print("Session cookies after setup:", self.session.cookies.get_dict())
+            
+        except json.JSONDecodeError as e:
+            print(f"Error parsing cookies: {e}")
+            print(f"Cookie string received: {cookies_str}")
+            # Handle raw cookie string format as fallback
             for cookie in cookies_str.split(';'):
                 if '=' in cookie:
                     name, value = cookie.strip().split('=', 1)
@@ -203,11 +233,30 @@ class TwitterClient:
 
     def send_tweet(self, text: str, reply_to_tweet_id: Optional[str] = None) -> dict:
         """Send a tweet or reply to another tweet"""
+        # Check for required cookies before proceeding
+        auth_token = self.session.cookies.get("auth_token")
+        csrf_token = self.session.cookies.get("ct0")
+        
+        if not auth_token or not csrf_token:
+            raise Exception(f"Missing required cookies. auth_token: {'present' if auth_token else 'missing'}, "
+                           f"ct0: {'present' if csrf_token else 'missing'}")
+        
         self._update_headers_with_csrf()
         
-        # Add debug logging
-        print(f"Headers: {self.session.headers}")
-        print(f"Cookies: {self.session.cookies.get_dict()}")
+        # Update headers with additional required fields
+        self.session.headers.update({
+            "x-twitter-auth-type": "OAuth2Session",
+            "x-twitter-client-language": "en",
+            "x-twitter-active-user": "yes",
+            "Referer": "https://twitter.com/compose/tweet",
+            "Origin": "https://twitter.com",
+            "x-csrf-token": csrf_token
+        })
+        
+        # Debug output
+        print("\nRequest Details:")
+        print("Headers:", json.dumps(dict(self.session.headers), indent=2))
+        print("Cookies:", json.dumps(dict(self.session.cookies.get_dict()), indent=2))
         
         variables = {
             "tweet_text": text,
@@ -227,6 +276,10 @@ class TwitterClient:
             "features": self._get_default_features(),
             "queryId": "a1p9RWpkYKBjWv_I3WzS-A"
         }
+
+        # Check if we have proper authentication
+        if not self.session.cookies.get_dict():
+            raise Exception("No authentication cookies found. Please provide valid cookies.")
 
         response = self.session.post(
             f"{self.BASE_URL}/i/api/graphql/a1p9RWpkYKBjWv_I3WzS-A/CreateTweet",

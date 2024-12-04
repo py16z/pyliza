@@ -1,24 +1,44 @@
 import os
 import json
 from twitter.twitterClient import TwitterClient
+from twitter.twitterInteractions import TwitterInteractionHandler
+
+from helpers import getResponse
+
+import chromadb
+
+chroma_db_path = os.path.join(os.getcwd(), "chromadb")
+chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
 def main():
-    # Initialize client with environment variables
-    client = TwitterClient(
-        username=os.getenv('TWITTER_USERNAME'),
-        password=os.getenv('TWITTER_PASSWORD'),
-        email=os.getenv('TWITTER_EMAIL'),
-        cookies=os.getenv('TWITTER_COOKIES'),
-        poll_interval=int(os.getenv('TWITTER_POLL_INTERVAL', 120))
-    )
-
-    # Example: Send a tweet
+    print("Initializing Twitter client...")
+    
     try:
-        response = client.send_tweet("Hello from Python Twitter Client!")
-        print("Tweet sent successfully:", response)
+        client = TwitterClient(
+            username=os.getenv('TWITTER_USERNAME'),
+            password=os.getenv('TWITTER_PASSWORD'),
+            email=os.getenv('TWITTER_EMAIL'),
+            poll_interval=int(os.getenv('TWITTER_POLL_INTERVAL', 120)),
+            chroma_client=chromaClient
+        )
+
+        # Search for tweets
+        tweets = client.search_tweets("@0xricebowl", max_tweets=20)
+        print(f"\nFound {len(tweets)} tweets")
+        for tweet in tweets:
+            print(f"\n@{tweet['username']}: {tweet['text']}")
+            
+        interaction_handler = TwitterInteractionHandler(
+            client,
+            response_generator=getResponse,
+            chroma_client=chromaClient
+        )
+        interaction_handler.monitor_mentions()
+
     except Exception as e:
-        print("Failed to send tweet:", str(e))
+        print(f"Error: {e}")
+        
 
-
+        
 if __name__ == "__main__":
     main()
