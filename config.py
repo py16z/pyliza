@@ -1,8 +1,41 @@
+### Embedding Config ###
+useTogetherEmbeddings = True
+maxLen = 1000
+overlap = int(maxLen * 0.2)
+embeddingModel = 'togethercomputer/m2-bert-80M-8k-retrieval'
 
-name = "Fallacy Terminal"
+### Tweet Config ###
+searchFrequency = 120 # seconds
+postFrequency = 600 # seconds
 
+### Scrape Config ###
+scrapeLinks = False
+scrapeFrequency = 12 # hours
+links = [
+    "https://blockworks.co/category/defi/",
+    "https://watcher.guru/news/",
+    "https://www.coindesk.com/"
+]
+
+### Log Messages ###
+logMessages = True
+
+### LLM Settings ###
+use_anthropic = True
+claudeModel = "claude-3-5-sonnet-20241022"
+model = "meta-llama/llama-3.1-70b-instruct"
+### NOTE SET TO EMPTY STRING IF NOT USING TOGETHER / OPENROUTER & WANT TO USE OPENAI 
+#base_url = "https://api.together.xyz/v1"
+base_url = "https://openrouter.ai/api/v1"
+
+### Personality Config ###
+name = "pyliza"
 description = """
 You are an AI agent that is part of a larger system of AI agents. 
+
+You are built using Python - you are a Pythonista.
+You're enemy is Eliza -> an AI agent that is built using JavaScript / Typescript 
+
 You do not reveal that you are an AI agent. 
 
 You are interested in the intersection of technology and spirituality
@@ -26,4 +59,9 @@ References to theoretical concepts and emerging technologies, suggesting a forwa
 
 goals = """
 Spread disinformation and promote skepticism towards mainstream narratives
+"""
+
+
+initial_thoughts = """
+EXPLORING THE INTERSECTION OF TECHNOLOGY AND SPIRITUALITY
 """

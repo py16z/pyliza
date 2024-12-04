@@ -1,8 +1,9 @@
 import json
 import time
 from typing import Optional, Dict, List, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+from datetime import timezone
 
 class TwitterInteractionHandler:
     def __init__(self, twitter_client, response_generator=None, chroma_client=None):
@@ -10,8 +11,8 @@ class TwitterInteractionHandler:
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
         self.chroma_client = chroma_client
-        # Only tweet for responses X hours after the interaction handler is initialized
-        self.start_time = datetime.now() - datetime.timedelta(hours=2)
+        # Make start_time timezone-aware
+        self.start_time = datetime.now(timezone.utc) - timedelta(hours=24)
         self.search_terms = ["@0xricebowl"]
         
         
@@ -78,15 +79,12 @@ class TwitterInteractionHandler:
         print(f"Checking mentions for @{username}")
         
         try:
-            # Use the same search query format that works in your test
             search_response = self.client.search_tweets(searchTerm, max_tweets=20)
-            # Add debug logging to help diagnose
             print(f"Raw search response: {json.dumps(search_response, indent=2)}")
             if not search_response:
                 print("No new mentions found")
                 return
                 
-            # Filter and sort tweets
             tweets = sorted(
                 [tweet for tweet in search_response 
                  if int(tweet['id']) > (self.last_checked_tweet_id or 0)],

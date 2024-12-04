@@ -16,25 +16,20 @@ load_dotenv()
 
 import json
 
-claudeModel = "claude-3-5-sonnet-20241022"
-model = "meta-llama/llama-3.1-70b-instruct"
-use_anthropic = True
-base_url = "https://api.together.xyz/v1"
 
-
-if use_anthropic:
+if config.use_anthropic:
         client = Anthropic(
             api_key=os.getenv("ANTHROPIC_API_KEY"),
     )
 else : 
-     if base_url == "" : 
+     if config.base_url == "" : 
           client = OpenAI(
                api_key=os.getenv("OPENAI_API_KEY"),
           )
      else : 
           client = OpenAI(
                api_key=os.getenv("OPENROUTER_API_KEY"),
-               base_url=base_url
+               base_url=config.base_url
           )
 
 if config.useTogetherEmbeddings: 
@@ -72,7 +67,7 @@ def getAnthropicResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6)
     response = client.messages.create(
         max_tokens=8192,
         system = prompt,
-        model=claudeModel,
+        model=config.claudeModel,
         messages=[
             {"role": "user", "content": agentPrompt},
             {"role": "user", "content": prompt}],
@@ -87,10 +82,10 @@ def getResponse(prompt, additionalContext="", temperature=0.7, top_p=0.6):
      if additionalContext != "": 
           agentPrompt += f"\n\n Here is some additional context: {additionalContext}"
 
-     if use_anthropic: 
-          response = getAnthropicResponse(prompt, agentPrompt, model, temperature, top_p)
+     if config.use_anthropic: 
+          response = getAnthropicResponse(prompt, agentPrompt, config.claudeModel, temperature, top_p)
      else: 
-          response = getOpenAIResponse(prompt, agentPrompt, model, temperature, top_p)
+          response = getOpenAIResponse(prompt, agentPrompt, config.model, temperature, top_p)
 
      #print("Response Generated: ", response)
      return response
@@ -101,11 +96,10 @@ def getResponseCustomAgentPrompt(prompt, agentPrompt, additionalContext="", temp
      if additionalContext != "": 
           agentPrompt += f"\n\n Here is some additional context: {additionalContext}"
 
-     if use_anthropic: 
-          response = getAnthropicResponse(prompt, agentPrompt, model, temperature, top_p)
+     if config.use_anthropic: 
+          response = getAnthropicResponse(prompt, agentPrompt, config.claudeModelmodel, temperature, top_p)
      else: 
-          response = getOpenAIResponse(prompt, agentPrompt, model, temperature, top_p)
-
+          response = getOpenAIResponse(prompt, agentPrompt, config.claudeModel, temperature, top_p)
      #print("Response Generated: ", response)
      return response
 
@@ -175,4 +169,46 @@ def fetch_context(chromaClient, collection, message, n=3):
         return context
     except Exception as e:
         print(e)
+        return ""
+
+
+def log_message(chromaClient, message, response, user="user") : 
+    # Here we want to log message into Chroma 
+    #input = message + " \n" + "response from " + user + " : " + response
+    input = response
+
+    try : 
+        collection = chromaClient.get_collection("pastInteractions")
+        n = len(collection.get()["documents"])
+        collection.add(documents=[input], metadatas=[{"user": user}], ids=[str(n + 1) + "_" + str(int(time.time()))])
+    except Exception as e:
+        print(e)
+
+
+def fetch_history(chromaClient, maxLength=2500):
+    try:
+          collection = chromaClient.get_collection("pastInteractions")
+          # Get all documents from the collection
+          info = collection.get()
+          documents = info["documents"]
+          n = len(documents)
+          if (n == 0):
+               return ""
+          # Concatenate all documents into a single string
+          chat_history_string = ""
+
+          for i in range(n) :
+               doc = documents[n - i]
+
+               while len(chat_history_string) + len(doc) < maxLength:
+                    chat_history_string = doc + "\n" + chat_history_string
+
+
+          histInstr = "\nUse this history to help inform your response. "
+          chat_history_string = "History of previous interactions " + histInstr + " : \n" + chat_history_string
+               
+          print("HISTORY FETCHED......")
+               
+          return chat_history_string
+    except:
         return ""
