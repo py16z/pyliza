@@ -2,14 +2,9 @@ from together import Together
 from dotenv import load_dotenv
 import json
 
-import config
-
 from helpers import getResponseCustomAgentPrompt
 
 load_dotenv()
-
-thoughts = json.load(open("thoughtProcess.json"))
-thoughtProcess = thoughts["thoughtProcess"]
 
 PROMPT = """
 <rules>
@@ -35,9 +30,6 @@ The summary should be in markdown format
 Ensure you also include the existing context in the summary along with any new information you have found
 
 You should seperate each section with a header 
-
-Your current thought process is : 
-{thoughtProcess}
 
 Key sections to include in the summary are 
 # Introduction
@@ -97,21 +89,21 @@ EXPECTED_OUTPUT = f"""
 
 import time
 
-def getContext(results, additionalContext="", useClaude=True):
+def getContext(results, additionalContext="", useClaude=True, thoughtProcess=""):
     togetherModel = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
     model = "claude-3-5-sonnet-20240620"
     contextStr = "\n<context> Additionally the following context has been provided from previous analysis conducted - build on this & add to it using the information provided : "
-    sysPrompt = PROMPT + TASK + EXPECTED_OUTPUT
+    sysPrompt = PROMPT + thoughtProcess +TASK + EXPECTED_OUTPUT
 
     out = getResponseCustomAgentPrompt(results, sysPrompt, additionalContext=additionalContext)
     return out
 
     
-def getSummary(results, additionalContext="", useClaude=True):
+def getSummary(results, additionalContext="", useClaude=True, thoughtProcess=""):
     togetherModel = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
     model = "claude-3-5-sonnet-20240620"
 
-    sysPrompt = PROMPT + SUMMARY_TASK + EXPECTED_OUTPUT
+    sysPrompt = PROMPT + thoughtProcess + SUMMARY_TASK + EXPECTED_OUTPUT
     out = getResponseCustomAgentPrompt(results, sysPrompt, additionalContext=additionalContext)
 
 

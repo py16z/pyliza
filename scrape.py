@@ -4,14 +4,20 @@ from scraping.scrape import getInfo
 from scraping.getContext import getContext
 
 import config
+import random
 
-
-def updateContext():
+def updateContext(thoughtProcess="", randomLink=True):
     context = []
-    for link in config.links : 
+    links = config.links
+    if randomLink:
+        links = random.sample(links, 1)
+
+    
+    for link in links : 
         try : 
             info = getInfo(link)
-            context.append(getContext(str(info), ""))
+            print("Scraping info from ", link)
+            context.append(getContext(str(info), thoughtProcess=thoughtProcess))
         except Exception as e:
             print(e)
 

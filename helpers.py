@@ -185,21 +185,21 @@ def fetch_context(chromaClient, collection, message, n=3):
         return ""
 
 
-def log_message(chromaClient, message, user="user") : 
+def log_message(chromaClient, message, user="user", collectionName="pastInteractions") : 
     # Here we want to log message into Chroma 
     #input = message + " \n" + "response from " + user + " : " + response
 
     try : 
-        collection = chromaClient.get_or_create_collection("pastInteractions")
+        collection = chromaClient.get_or_create_collection(collectionName)
         n = len(collection.get()["documents"])
         collection.add(documents=[message], metadatas=[{"user": user}], ids=[str(n + 1) + "_" + str(int(time.time()))])
     except Exception as e:
         print(e)
 
 
-def fetch_history(chromaClient, maxLength=2500):
+def fetch_history(chromaClient, maxLength=2500, collectionName="pastInteractions"):
     try:
-          collection = chromaClient.get_collection("pastInteractions")
+          collection = chromaClient.get_collection(collectionName)
           # Get all documents from the collection
           info = collection.get()
           documents = info["documents"]
@@ -298,4 +298,53 @@ def reflectThoughts(additionalContext = ""):
      json.dump(thoughtProcess, open("initial_thoughts.json", "w"))
      print("Updated Thought Process: ", response)
      
+
+def getUserContext(chromaClient, userId, collectionName="userContext"):
+
+     try : 
+          collection = chromaClient.get_collection(collectionName)
+          results = collection.get(ids=[userId])
+          docs = results['documents'][0]
+          return docs
+     except Exception as e:
+          print(e)
+          return ""
+
+
+def updateUserContext(chromaClient, userId, interaction, userName, collectionName="userContext", additionalContext=""):
+
+     existingContext = getUserContext(chromaClient, userId, collectionName)
+     print("EXISTING CONTEXT: ", existingContext)
+     if existingContext != "":
+          existingContext = "This is your existing context on the user " + existingContext
+
+     contextPrompt = f"""
+     {existingContext}
+
+     You had the following interaction with {userName} 
+     {interaction}
+
+     Update your context on the user based on this interaction 
+
+     The context should be formatted as follows 
+
+     <userContext>
+     This should include the following information 
+     - Your attitude towards {userName}
+     - Your understanding of {userName}
+     - What do you think of {userName}
+     - Do they hold any importance / strong opinions that you agree / disagree with
+     - Any other information you have about {userName}
+     </userContext>
+
+     """
+
+     response = getResponse(contextPrompt, additionalContext=additionalContext)
+
+     collection = chromaClient.get_or_create_collection(collectionName)
+     collection.add(documents=[response], ids=[userId])
+     print("UPDATED CONTEXT: ", response)
+
+     
+
 

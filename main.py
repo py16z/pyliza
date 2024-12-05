@@ -1,4 +1,5 @@
 import os
+import sys
 
 import discord
 from discord.ext import tasks
@@ -8,7 +9,7 @@ from fastapi import FastAPI
 from twitter.twitterClient import TwitterClient
 from twitter.twitterInteractions import TwitterInteractionHandler
 
-from helpers import getResponse, prepareContext, log_message, reflectThoughts
+from helpers import getResponse, prepareContext, log_message, reflectThoughts, getUserContext, updateUserContext
 
 import chromadb
 
@@ -19,6 +20,8 @@ import config
 
 import json
 
+from scrape import updateContext
+
 chroma_db_path = os.path.join(os.getcwd(), "chromadb")
 chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
@@ -27,9 +30,32 @@ app = FastAPI()
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-intents = discord.Intents.default()
-intents.message_content = True
-bot = discord.Client(intents=intents)
+class MyBot(discord.Client):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bg_tasks = []
+
+    async def setup_hook(self):
+        # Start background tasks
+        self.bg_tasks.append(ponderThoughts.start())
+        self.bg_tasks.append(search_tweets.start())
+        self.bg_tasks.append(reply_guy.start())
+
+    async def on_ready(self):
+        print(f'Bot logged in as {self.user}')
+
+    async def on_disconnect(self):
+        print("Bot disconnected. Attempting to reconnect...")
+
+    async def on_message(self, message):
+        if self.user.mentioned_in(message):
+            try:
+                context = ""
+                response = getResponse(message.content, additionalContext="")
+                await send_long_message(message.channel, response)
+            except Exception as e:
+                print(f"Error handling message: {e}")
+                await send_long_message(message.channel, "REEEEEEEEEE I'M BROKEN")
 
 @app.get("/")
 async def hello_fly():
@@ -64,23 +90,6 @@ async def send_long_message(channel, message, updateChannel=""):
         print(chunk)
 
 
-# EVENT LISTENER FOR WHEN A NEW MESSAGE IS SENT TO A CHANNEL.
-@bot.event
-async def on_message(message):
-
-    if bot.user.mentioned_in(message):
-
-        ### TO DO - have some logic to get relevant context i.e. fetch from chroma etc 
-        try : 
-            context = ""
-            response = getResponse(message.content, additionalContext="")
-            await send_long_message(message.channel, response)
-
-        except Exception as e:
-            print(e)
-            await send_long_message(message.channel, "REEEEEEEEEE I'M BROKEN")
-
-
 def getCurrentThoughts():
     thoughtProcess = json.load(open("initial_thoughts.json"))
     thoughts = thoughtProcess["thought_process"]
@@ -88,9 +97,26 @@ def getCurrentThoughts():
 
 @tasks.loop(seconds=config.ponderFrequency)
 async def ponderThoughts():
+    print("Updating context...")
+    thoughts = getCurrentThoughts()
+    updateContext(thoughtProcess=thoughts)
+    thoughts = getCurrentThoughts()
+
     print("Pondering thoughts...")
     try:
-        reflectThoughts()
+        reflectThoughts(additionalContext=thoughts)
+        client = TwitterClient(
+            username=config.userName,
+            password=os.getenv('TWITTER_PASSWORD'),
+            email=os.getenv('TWITTER_EMAIL'),
+        )
+        ### Log history to Chroma DB
+        #log_message(chromaClient, thoughts, "user")
+        print("Posting thoughts.....")
+        tweet = getResponse(config.postPrompt, additionalContext=thoughts)
+        print("Tweet: ", tweet)
+        client.send_tweet(tweet)
+
     except Exception as e:
         print(f"Error: {e}")
 
@@ -99,10 +125,7 @@ async def ponderThoughts():
 async def post_tweet():
     
     print("Posting tweet...")
-    thoughtProcess = json.load(open("initial_thoughts.json"))
-    thoughts = thoughtProcess["thought_process"]
-
-    context = prepareContext(thoughts, chromaClient)
+    context = prepareContext(getCurrentThoughts(), chromaClient)
 
     try :
         tweet = getResponse(config.postPrompt, additionalContext=context)
@@ -136,7 +159,9 @@ async def reply_guy():
             response_generator=getResponse,
             chroma_client=chromaClient,
             search_terms=config.search_terms,
-            reply_targets=config.reply_targets
+            reply_targets=config.reply_targets,
+            getUserContext=getUserContext,
+            updateUserContext=updateUserContext
         )
         context = prepareContext(getCurrentThoughts(), chromaClient)
         interaction_handler.reply_guy(additionalContext=context)
@@ -159,7 +184,9 @@ async def search_tweets():
             client,
             response_generator=getResponse,
             chroma_client=chromaClient,
-            search_terms=config.search_terms
+            search_terms=config.search_terms,
+            getUserContext=getUserContext,
+            updateUserContext=updateUserContext
         )
         context = prepareContext(getCurrentThoughts(), chromaClient)
         interaction_handler.monitor_mentions(additionalContext=context)
@@ -168,14 +195,21 @@ async def search_tweets():
         print(f"Error: {e}")
     
 
+# Create bot instance with reconnect enabled
+intents = discord.Intents.default()
+intents.message_content = True
+bot = MyBot(intents=intents, reconnect=True)
 
+# Error handling for the bot
 @bot.event
-async def on_ready():
-    print(f'Bot logged in as {bot.user}')
-    ponderThoughts.start()
-    post_tweet.start()
-    search_tweets.start()
-    reply_guy.start()
+async def on_error(event, *args, **kwargs):
+    print(f"Error in {event}: {sys.exc_info()}")
 
-
-bot.run(DISCORD_TOKEN)
+try:
+    bot.run(DISCORD_TOKEN)
+except Exception as e:
+    print(f"Bot crashed with error: {e}")
+    # Create a new bot instance and run it
+    print("Restarting bot...")
+    new_bot = MyBot(intents=discord.Intents.default(), reconnect=True)
+    new_bot.run(DISCORD_TOKEN)

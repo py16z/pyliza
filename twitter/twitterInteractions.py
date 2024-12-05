@@ -8,7 +8,7 @@ from datetime import timezone
 from helpers import getTweetResponsePrompt
 
 class TwitterInteractionHandler:
-    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[]):
+    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, updateUserContext=None):
         self.client = twitter_client
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
@@ -17,6 +17,8 @@ class TwitterInteractionHandler:
         self.start_time = datetime.now(timezone.utc) - timedelta(hours=24)
         self.search_terms = search_terms
         self.reply_targets = reply_targets
+        self.getUserContext = getUserContext
+        self.updateUserContext = updateUserContext
         
     def load_last_checked_tweet_id(self) -> Optional[int]:
         """Load the ID of the last checked tweet from file"""
@@ -106,25 +108,42 @@ class TwitterInteractionHandler:
                 if tweet_created_at < self.start_time:
                     print(f"Skipping tweet {tweet_id} because it was created before the interaction handler was initialized")
                     continue
-
+                # Skip our own tweets
+                print("TWEET USERNAME: ", tweet['username'])
+                if tweet['username'] == self.client.username:
+                    continue
                 # Skip if we've already responded to this tweet
                 if self.has_responded_to_tweet(tweet_id):
                     print(f"Already responded to tweet {tweet_id}")
                     continue
                 
-                # Skip our own tweets
-                if tweet['username'] == username:
-                    continue
-                
+
+                                
                 print(f"Processing tweet {tweet_id} from @{tweet['username']}")
                 tweetContent = tweet['text']
                 print("TWEET CONTENT: ", tweetContent)
                 tweetPrompt = getTweetResponsePrompt(tweetContent, tweet['username'], searchContext=searchContext)
+                if self.getUserContext : 
+                    userContext = self.getUserContext(self.chroma_client, tweet['username'])
+                    respondContext = additionalContext + userContext
+                else : 
+                    respondContext = additionalContext
+
                 # Generate and send response
-                response_text = self.generate_response(tweetPrompt, additionalContext=additionalContext)
+                response_text = self.generate_response(tweetPrompt, additionalContext=respondContext)
                 print("RESPONSE TEXT: ", response_text)
                 nResponses += 1
                 response = self.client.send_tweet(response_text, tweet_id)
+
+                interaction = f"""
+                You had the following interaction with {tweet['username']} 
+                {tweet['username']} tweeted : {tweetContent}
+
+                You responded with : {response_text}
+                """
+
+                if self.updateUserContext : 
+                    self.updateUserContext(self.chroma_client, tweet['username'], interaction, tweet['username'], additionalContext=additionalContext)
                 
                 # TO DO -> get actual 
                 responseId = "PLACEHOLDER"

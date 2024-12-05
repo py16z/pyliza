@@ -254,9 +254,9 @@ class TwitterClient:
         })
         
         # Debug output
-        print("\nRequest Details:")
-        print("Headers:", json.dumps(dict(self.session.headers), indent=2))
-        print("Cookies:", json.dumps(dict(self.session.cookies.get_dict()), indent=2))
+        # print("\nRequest Details:")
+        # print("Headers:", json.dumps(dict(self.session.headers), indent=2))
+        # print("Cookies:", json.dumps(dict(self.session.cookies.get_dict()), indent=2))
         
         variables = {
             "tweet_text": text,
