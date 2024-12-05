@@ -26,4 +26,3 @@ def updateContext(thoughtProcess="", randomLink=True):
         # indent = 4 for pretty printing
         json.dump({"context" : context}, f, indent=4)
 
-#updateContext()

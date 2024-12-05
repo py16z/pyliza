@@ -8,7 +8,7 @@ from datetime import timezone
 from helpers import getTweetResponsePrompt
 
 class TwitterInteractionHandler:
-    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, updateUserContext=None):
+    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, fetchContext=None, updateUserContext=None):
         self.client = twitter_client
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
@@ -19,7 +19,7 @@ class TwitterInteractionHandler:
         self.reply_targets = reply_targets
         self.getUserContext = getUserContext
         self.updateUserContext = updateUserContext
-        
+        self.fetchContext = fetchContext
     def load_last_checked_tweet_id(self) -> Optional[int]:
         """Load the ID of the last checked tweet from file"""
         try:
@@ -80,6 +80,19 @@ class TwitterInteractionHandler:
 
     def generate_response(self, tweet_text: str, additionalContext: str = "") -> str:
         """Generate a response using the provided response generator"""
+        if self.fetchContext:
+            fetchedContext = self.fetchContext(self.chroma_client, tweet_text)
+            print("Fetched context successfully.....")
+            # print max 100 characters of fetched context
+            if len(fetchedContext) > 100:
+                print(fetchedContext[:100], "......")
+            else : 
+                print(fetchedContext, "......")
+
+            additionalContext += f"""
+            Below is some fetched context, it includes some inner thoughts / context from the internet / etc. \n<fetchedContext>" + {fetchedContext} + "</fetchedContext>"
+            If relevant, you can use this context to inform your response.
+            """
         return self.response_generator(tweet_text, additionalContext=additionalContext)
 
     def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 3):
@@ -167,6 +180,53 @@ class TwitterInteractionHandler:
 
         except Exception as e:
             print(f"Error in mention monitoring loop: {str(e)}")
+
+    def tweet_to_followers(self, check_interval: int = 120, additionalContext: str = ""):
+        print("Starting tweet to followers loop...")
+        followers = self.client.get_followers(self.client.username)
+        
+        ### randomly select a follower and tweet to them
+        follower = random.choice(followers)
+        print("Follower : ", follower['username'])
+        print("Description", follower['description'])
+        
+        prompt = f"""
+        Tweet to your follower - {follower['username']} make sure to include their handle i.e. @{follower['username']} in the tweet. 
+        Profile of {follower['username']} : {follower['description']}
+
+        When tweeting consider the below tweet style instructions 
+<tweetStyle>
+    never use hashtags or emojis
+    response should be short, punchy, and to the point
+    don't say ah yes or oh or anything
+    don't ask rhetorical questions, its lame
+    occassionally you'll ask provocative / controversial questions
+    use lowercase most of the time
+    you like to go deep down the rabbithole....
+</tweetStyle>
+
+        Base the tweet on your current thought process & stay true to your identity.
+        If there is something relevant in their profile mention that otherwise mention something aligned with your current thougts / persona. 
+        The tweet can either be a question or a statement 
+
+        """
+        if self.getUserContext : 
+            follower_context = self.getUserContext(self.chroma_client, follower['username'])
+            additionalContext += follower_context
+        tweet_text = self.generate_response(prompt, additionalContext=additionalContext)
+        print("Tweet to follower : ", tweet_text)
+        response = self.client.send_tweet(tweet_text)
+
+        print("Response : ", response)
+
+        if self.updateUserContext : 
+            interaction = f"""
+            You tweeted to {follower['username']} : {tweet_text}
+            Profile of {follower['username']} : {follower['description']}
+            They follow you
+            """
+
+            self.updateUserContext(self.chroma_client, follower['username'], interaction, follower['username'], additionalContext=additionalContext)
 
     def reply_guy(self, check_interval: int = 120, additionalContext: str = ""):
         print("Starting monitoring reply guy targets...")

@@ -232,6 +232,189 @@ class TwitterClient:
             print(f"Error during search: {str(e)}")
             return []
 
+    def _get_default_features_user_profile(self) -> Dict[str, bool]:
+        """Get default feature flags required by Twitter"""
+        return {
+            # Core features
+            "verified_phone_label_enabled": False,
+            "tweetypie_unmention_optimization_enabled": True,
+            "responsive_web_edit_tweet_api_enabled": True,
+            "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
+            "view_counts_everywhere_api_enabled": True,
+            "longform_notetweets_consumption_enabled": True,
+            "responsive_web_twitter_article_tweet_consumption_enabled": False,
+            "tweet_awards_web_tipping_enabled": False,
+            "freedom_of_speech_not_reach_fetch_enabled": True,
+            "standardized_nudges_misinfo": True,
+            "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": True,
+            "longform_notetweets_rich_text_read_enabled": True,
+            "longform_notetweets_inline_media_enabled": True,
+            "responsive_web_enhance_cards_enabled": False,
+            "responsive_web_graphql_exclude_directive_enabled": True,
+            "responsive_web_graphql_skip_user_profile_image_extensions_enabled": False,
+            "responsive_web_graphql_timeline_navigation_enabled": True,
+            
+            # Additional required features for user profile
+            "hidden_profile_likes_enabled": False,
+            "hidden_profile_subscriptions_enabled": False,
+            "highlights_tweets_tab_ui_enabled": True,
+            "creator_subscriptions_tweet_preview_api_enabled": True,
+            "subscriptions_verification_info_is_identity_verified_enabled": True,
+            "subscriptions_verification_info_verified_since_enabled": True,
+            
+            # Other features
+            "vibe_api_enabled": False,
+            "responsive_web_text_conversations_enabled": False,
+            "interactive_text_enabled": True,
+            "blue_business_profile_image_shape_enabled": False,
+            "c9s_tweet_anatomy_moderator_badge_enabled": True,
+            "rweb_video_timestamps_enabled": True,
+            "responsive_web_media_download_video_enabled": False,
+            "rweb_tipjar_consumption_enabled": True,
+            "articles_preview_enabled": True,
+            "creator_subscriptions_quote_tweet_preview_enabled": True,
+            "communities_web_enable_tweet_community_results_fetch": True,
+            "android_graphql_skip_api_media_color_palette": False,
+            "unified_cards_ad_metadata_container_dynamic_card_content_query_enabled": False
+        }
+
+    def _get_user_id(self, username: str) -> Optional[str]:
+        """
+        Get user ID for a given username
+        """
+        self._update_headers_with_csrf()
+        
+        variables = {
+            "screen_name": username,
+            "withSafetyModeUserFields": True,
+            "withSuperFollowsUserFields": True,
+        }
+
+        features = self._get_default_features_user_profile()
+        
+        field_toggles = {
+            "withAuxiliaryUserLabels": False
+        }
+
+        params = {
+            "variables": json.dumps(variables),
+            "features": json.dumps(features),
+            "fieldToggles": json.dumps(field_toggles)
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.BASE_URL}/i/api/graphql/G3KGOASz96M-Qu0nwmGXNg/UserByScreenName",
+                params=params
+            )
+            
+            if response.status_code != 200:
+                print(f"Failed to get user ID: {response.text}")
+                return None
+
+            data = response.json()
+            return data.get('data', {}).get('user', {}).get('result', {}).get('rest_id')
+        
+        except Exception as e:
+            print(f"Error getting user ID: {str(e)}")
+            return None
+    
+    def get_followers(self, username: str, max_followers: int = 100) -> List[Dict]:
+        """
+        Get followers of a specific Twitter account
+        
+        Args:
+            username (str): Twitter username/handle (without the @ symbol)
+            max_followers (int): Maximum number of followers to fetch (default 100)
+            
+        Returns:
+            List[Dict]: List of follower objects containing user data
+        """
+        # First get the user ID
+        user_id = self._get_user_id(username)
+        if not user_id:
+            print(f"Could not find user ID for username: {username}")
+            return []
+
+        self._update_headers_with_csrf()
+        
+        # Ensure max_followers doesn't exceed reasonable API limits
+        max_followers = min(max_followers, 100)
+        
+        variables = {
+            "userId": user_id,
+            "count": max_followers,
+            "includePromotedContent": False,
+            "withSuperFollowsUserFields": True,
+            "withDownvotePerspective": False,
+            "withReactionsMetadata": False,
+            "withReactionsPerspective": False,
+            "withSuperFollowsTweetFields": True,
+        }
+
+        features = self._get_default_features()
+
+        params = {
+            "variables": json.dumps(variables),
+            "features": json.dumps(features),
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.BASE_URL}/i/api/graphql/rRXFSG5vR6drKr5M37YOTw/Followers",
+                params=params
+            )
+            
+            if response.status_code != 200:
+                print(f"Followers request failed: {response.text}")
+                return []
+
+            data = response.json()
+            followers = []
+            
+            # Navigate through the response structure
+            instructions = data.get('data', {}).get('user', {}).get('result', {}).get('timeline', {}).get('timeline', {}).get('instructions', [])
+            
+            for instruction in instructions:
+                if instruction.get('type') == 'TimelineAddEntries':
+                    entries = instruction.get('entries', [])
+                    for entry in entries:
+                        # Skip non-user entries
+                        if not entry.get('entryId', '').startswith('user-'):
+                            continue
+                            
+                        user_result = entry.get('content', {}).get('itemContent', {}).get('user_results', {}).get('result', {})
+                        if not user_result:
+                            continue
+
+                        legacy = user_result.get('legacy', {})
+                        
+                        if not legacy:
+                            continue
+
+                        # Extract follower data
+                        follower = {
+                            'user_id': user_result.get('rest_id'),
+                            'username': legacy.get('screen_name'),
+                            'name': legacy.get('name'),
+                            'description': legacy.get('description'),
+                            'followers_count': legacy.get('followers_count'),
+                            'following_count': legacy.get('friends_count'),
+                            'tweet_count': legacy.get('statuses_count'),
+                            'created_at': legacy.get('created_at'),
+                            'location': legacy.get('location'),
+                            'verified': legacy.get('verified', False),
+                            'profile_image_url': legacy.get('profile_image_url_https'),
+                            'protected': legacy.get('protected', False)
+                        }
+                        
+                        followers.append(follower)
+
+            return followers
+        
+        except Exception as e:
+            print(f"Error getting followers: {str(e)}")
+            return []
 
     def send_tweet(self, text: str, reply_to_tweet_id: Optional[str] = None) -> dict:
         """Send a tweet or reply to another tweet"""

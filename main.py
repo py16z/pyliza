@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from twitter.twitterClient import TwitterClient
 from twitter.twitterInteractions import TwitterInteractionHandler
 
-from helpers import getResponse, prepareContext, log_message, reflectThoughts, getUserContext, updateUserContext
+from helpers import getResponse, prepareContext, log_message, reflectThoughts, getUserContext, updateUserContext, fetch_context
 
 import chromadb
 
@@ -40,7 +40,8 @@ class MyBot(discord.Client):
         self.bg_tasks.append(ponderThoughts.start())
         self.bg_tasks.append(search_tweets.start())
         self.bg_tasks.append(reply_guy.start())
-
+        self.bg_tasks.append(tweet_to_followers.start())
+        
     async def on_ready(self):
         print(f'Bot logged in as {self.user}')
 
@@ -101,6 +102,7 @@ async def ponderThoughts():
     last_tweet = json.load(open("last_tweet.json"))
     last_tweet_time = last_tweet["last_tweet"]
 
+    print("Time since last tweet: ", time.time() - last_tweet_time)
     if time.time() - last_tweet_time < config.postFrequency:
         print("Not posting tweet, too soon...")
         return
@@ -125,6 +127,8 @@ async def ponderThoughts():
         print("Tweet: ", tweet)
         client.send_tweet(tweet)
         last_tweet["last_tweet"] = time.time()
+        with open("last_tweet.json", "w") as f:
+            json.dump(last_tweet, f)
 
     except Exception as e:
         print(f"Error: {e}")
@@ -160,6 +164,31 @@ async def post_tweet():
     except Exception as e:
         print(f"Error: {e}")
 
+
+@tasks.loop(seconds=config.tweetToFollowersFrequency)
+async def tweet_to_followers():
+    print("Tweeting to followers...")
+    try:
+        client = TwitterClient(
+            username=config.userName,
+            password=os.getenv('TWITTER_PASSWORD'),
+            email=os.getenv('TWITTER_EMAIL'),
+            chroma_client=chromaClient
+        )
+
+        interaction_handler = TwitterInteractionHandler(
+            client,
+            response_generator=getResponse,
+            chroma_client=chromaClient,
+            getUserContext=getUserContext,
+            updateUserContext=updateUserContext,
+            fetchContext=fetch_context
+        )
+        interaction_handler.tweet_to_followers()
+    except Exception as e:
+        print(f"Error: {e}")
+
+
 @tasks.loop(seconds=config.replyGuyFrequency)
 async def reply_guy():
     print("Replying to reply guy targets...")
@@ -179,7 +208,8 @@ async def reply_guy():
             search_terms=config.search_terms,
             reply_targets=config.reply_targets,
             getUserContext=getUserContext,
-            updateUserContext=updateUserContext
+            updateUserContext=updateUserContext,
+            fetchContext=fetch_context
         )
         context = prepareContext(getCurrentThoughts(), chromaClient)
         interaction_handler.reply_guy(additionalContext=context)
@@ -195,7 +225,7 @@ async def search_tweets():
             password=os.getenv('TWITTER_PASSWORD'),
             email=os.getenv('TWITTER_EMAIL'),
             poll_interval=int(os.getenv('TWITTER_POLL_INTERVAL', 120)),
-            chroma_client=chromaClient
+            chroma_client=chromaClient,
         )
 
         interaction_handler = TwitterInteractionHandler(
@@ -204,7 +234,8 @@ async def search_tweets():
             chroma_client=chromaClient,
             search_terms=config.search_terms,
             getUserContext=getUserContext,
-            updateUserContext=updateUserContext
+            updateUserContext=updateUserContext,
+            fetchContext=fetch_context
         )
         context = prepareContext(getCurrentThoughts(), chromaClient)
         interaction_handler.monitor_mentions(additionalContext=context)

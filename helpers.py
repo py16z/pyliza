@@ -152,11 +152,15 @@ def addTxt(chromaClient, collectionName, info, fileName):
                print(inputTxts[i])
                print("Retrying")
 
-     ids = [fileName + str(i) for i in range(len(finalTxts))]
+     ### get number of records 
+
      try : 
           collection = chromaClient.get_collection(collectionName)
      except :
           collection = chromaClient.create_collection(collectionName)
+
+     n = len(collection.get()["documents"])
+     ids = [fileName + str(i + n) for i in range(len(finalTxts))]
 
      collection.add(
           embeddings=embeddings,
@@ -166,10 +170,10 @@ def addTxt(chromaClient, collectionName, info, fileName):
      print("Added Data : " + collectionName)
 
 
-def fetch_context(chromaClient, collection, message, n=3):
+def fetch_context(chromaClient, message, collectionName="docs", n=3):
     ### Here we want to fetch any other relevant context from vector DB 
     try :
-        collection = chromaClient.get_collection(collection)
+        collection = chromaClient.get_collection(collectionName)
         embedding = get_embeddings([message], model=config.embeddingModel)
 
         results = collection.query(query_embeddings=embedding, n_results=2)
@@ -256,7 +260,7 @@ def prepareContext(message, chromaClient,includeHistory=True, includeDocs=True, 
           context += fetch_history(chromaClient)
      if includeDocs: 
           try : 
-               docContext = fetch_context(chromaClient, collectionName, message)
+               docContext = fetch_context(chromaClient, message)
                if docContext != "": 
                     context += f"\n<context> The below is information from {collectionName} "
                     context += docContext
