@@ -9,3 +9,7 @@
 chromadb
 .DS_Store
 *.txt
+
+docs/.vitepress/dist
+docs/.vitepress/cache
+node_modules/
