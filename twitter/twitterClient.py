@@ -146,6 +146,8 @@ class TwitterClient:
                 "x-csrf-token": csrf_token,
             })
 
+
+
     def search_tweets(self, query: str, max_tweets: int = 20) -> List[Dict]:
         """
         Search for tweets using Twitter's search API

@@ -335,6 +335,7 @@ def updateUserContext(chromaClient, userId, interaction, userName, collectionNam
      - What do you think of {userName}
      - Do they hold any importance / strong opinions that you agree / disagree with
      - Any other information you have about {userName}
+     - Summarize your previous interactions with {userName} i.e. what topics were discussed etc
      </userContext>
 
      """

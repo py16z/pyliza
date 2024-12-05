@@ -97,6 +97,14 @@ def getCurrentThoughts():
 
 @tasks.loop(seconds=config.ponderFrequency)
 async def ponderThoughts():
+
+    last_tweet = json.load(open("last_tweet.json"))
+    last_tweet_time = last_tweet["last_tweet"]
+
+    if time.time() - last_tweet_time < config.postFrequency:
+        print("Not posting tweet, too soon...")
+        return
+
     print("Updating context...")
     thoughts = getCurrentThoughts()
     updateContext(thoughtProcess=thoughts)
@@ -116,6 +124,7 @@ async def ponderThoughts():
         tweet = getResponse(config.postPrompt, additionalContext=thoughts)
         print("Tweet: ", tweet)
         client.send_tweet(tweet)
+        last_tweet["last_tweet"] = time.time()
 
     except Exception as e:
         print(f"Error: {e}")
@@ -124,6 +133,15 @@ async def ponderThoughts():
 @tasks.loop(seconds=config.postFrequency)
 async def post_tweet():
     
+    last_tweet = json.load(open("last_tweet.json"))
+    last_tweet_time = last_tweet["last_tweet"]
+
+    if time.time() - last_tweet_time < config.postFrequency:
+        print("Not posting tweet, too soon...")
+        return
+    
+
+
     print("Posting tweet...")
     context = prepareContext(getCurrentThoughts(), chromaClient)
 
@@ -198,18 +216,22 @@ async def search_tweets():
 # Create bot instance with reconnect enabled
 intents = discord.Intents.default()
 intents.message_content = True
-bot = MyBot(intents=intents, reconnect=True)
+bot = MyBot(intents=intents, reconnect=False)
 
 # Error handling for the bot
 @bot.event
 async def on_error(event, *args, **kwargs):
     print(f"Error in {event}: {sys.exc_info()}")
 
-try:
-    bot.run(DISCORD_TOKEN)
-except Exception as e:
-    print(f"Bot crashed with error: {e}")
-    # Create a new bot instance and run it
-    print("Restarting bot...")
-    new_bot = MyBot(intents=discord.Intents.default(), reconnect=True)
-    new_bot.run(DISCORD_TOKEN)
+
+while True:
+    try:
+        bot.run(DISCORD_TOKEN)
+    except Exception as e:
+        print(f"Bot crashed with error: {e}")
+        # Create a new bot instance and run it
+        print("Restarting bot...")
+        time.sleep(10)
+
+        bot = MyBot(intents=discord.Intents.default(), reconnect=False)
+        bot.run(DISCORD_TOKEN)

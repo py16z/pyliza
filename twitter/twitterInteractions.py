@@ -84,8 +84,7 @@ class TwitterInteractionHandler:
 
     def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 3):
         """Check for new mentions and respond to them"""
-        username = os.getenv('TWITTER_USERNAME')
-        print(f"Checking mentions for @{username}")
+        print(f"Checking mentions for {searchTerm}")
         nResponses = 0
         
         try:
@@ -180,10 +179,9 @@ class TwitterInteractionHandler:
             
             # randomly select a reply target
             reply_target = random.choice(self.reply_targets)
-            searchTerm = reply_target["searchTerm"]
+            reply_search = f"from:{reply_target['searchTerm']}"
             searchContext = reply_target["searchContext"]
-
-            self.check_mentions(searchTerm, additionalContext=additionalContext, searchContext=searchContext)
+            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext)
 
         except Exception as e:
             print(f"Error in mention monitoring loop: {str(e)}")
