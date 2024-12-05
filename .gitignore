@@ -1,6 +1,6 @@
 .env
 *.pyc
-*.json
+
 
 .venv
 
