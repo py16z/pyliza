@@ -205,6 +205,13 @@ class TwitterInteractionHandler:
     you like to go deep down the rabbithole....
 </tweetStyle>
 
+        Start the tweet with some greeting followed by @{follower['username']} i.e. 
+        hi @{follower['username']}
+        hey @{follower['username']}
+        gm @{follower['username']}
+        -> be creative here feel free to add in adjectives / adverbs / etc i.e. dear esteemed @{follower['username']} (you can use their profile to get some ideas)
+
+
         Base the tweet on your current thought process & stay true to your identity.
         If there is something relevant in their profile mention that otherwise mention something aligned with your current thougts / persona. 
         The tweet can either be a question or a statement 
