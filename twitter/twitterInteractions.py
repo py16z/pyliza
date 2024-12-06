@@ -189,10 +189,16 @@ class TwitterInteractionHandler:
         follower = random.choice(followers)
         print("Follower : ", follower['username'])
         print("Description", follower['description'])
-        
+
+        userDescription = follower['description']
+
+        if self.getUserContext : 
+            follower_context = self.getUserContext(self.chroma_client, follower['username'])
+            userDescription += f"Current context of {follower['username']} based on your previous interactions : {follower_context}"
+
         prompt = f"""
         Tweet to your follower - {follower['username']} make sure to include their handle i.e. @{follower['username']} in the tweet. 
-        Profile of {follower['username']} : {follower['description']}
+        Profile of {follower['username']} : {userDescription}
 
         When tweeting consider the below tweet style instructions 
 <tweetStyle>
@@ -217,9 +223,7 @@ class TwitterInteractionHandler:
         The tweet can either be a question or a statement 
 
         """
-        if self.getUserContext : 
-            follower_context = self.getUserContext(self.chroma_client, follower['username'])
-            additionalContext += follower_context
+
         tweet_text = self.generate_response(prompt, additionalContext=additionalContext)
         print("Tweet to follower : ", tweet_text)
         response = self.client.send_tweet(tweet_text)

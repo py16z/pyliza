@@ -6,7 +6,7 @@ from scraping.getContext import getContext
 import config
 import random
 
-def updateContext(thoughtProcess="", randomLink=True):
+def updateContext(links=config.links, thoughtProcess="", randomLink=True):
     context = []
     links = config.links
     if randomLink:
