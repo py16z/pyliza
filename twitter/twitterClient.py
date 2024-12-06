@@ -23,7 +23,8 @@ class TwitterClient:
         email: Optional[str] = None,
         cookies: Optional[str] = None,
         poll_interval: int = 120,
-        chroma_client: Optional[chromadb.Client] = None
+        chroma_client: Optional[chromadb.Client] = None,
+        postLogger=None
     ):
         self.username = username
         self.password = password
@@ -32,6 +33,7 @@ class TwitterClient:
         self.session = requests.Session()
         self.bearer_token = "AAAAAAAAAAAAAAAAAAAAAFQODgEAAAAAVHTp76lzh3rFzcHbmHVvQxYYpTw%3DckAlMINMjmCwxUcaXbAN4XqJVdgMJaHqNOFgPMK0zN1qLqLQCF"
         self.chroma_client = chroma_client
+        self.postLogger = postLogger
         
         # Set up default headers
         self.session.headers.update({

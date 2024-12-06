@@ -95,7 +95,7 @@ class TwitterInteractionHandler:
             """
         return self.response_generator(tweet_text, additionalContext=additionalContext)
 
-    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 3):
+    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 2):
         """Check for new mentions and respond to them"""
         print(f"Checking mentions for {searchTerm}")
         nResponses = 0
@@ -120,6 +120,11 @@ class TwitterInteractionHandler:
                 if tweet_created_at < self.start_time:
                     print(f"Skipping tweet {tweet_id} because it was created before the interaction handler was initialized")
                     continue
+
+                if nResponses >= maxReplies:
+                    print(f"Reached max replies of {maxReplies}, stopping")
+                    break
+
                 # Skip our own tweets
                 print("TWEET USERNAME: ", tweet['username'])
                 if tweet['username'] == self.client.username:
@@ -156,7 +161,14 @@ class TwitterInteractionHandler:
 
                 if self.updateUserContext : 
                     self.updateUserContext(self.chroma_client, tweet['username'], interaction, tweet['username'], additionalContext=additionalContext)
-                
+
+                if self.client.postLogger:
+                    message = f"""
+                    In response to a tweet from {tweet['username']} : {tweetContent}
+                    You tweeted : {response_text}
+                    """
+                    self.client.postLogger(self.chroma_client, message)
+
                 # TO DO -> get actual 
                 responseId = "PLACEHOLDER"
                 ### Log Response to Chroma DB
@@ -238,6 +250,16 @@ class TwitterInteractionHandler:
             """
 
             self.updateUserContext(self.chroma_client, follower['username'], interaction, follower['username'], additionalContext=additionalContext)
+
+        if self.client.postLogger:
+            message = f"""
+            You tweeted to {follower['username']} : {tweet_text}
+            Profile of {follower['username']} : {follower['description']}
+            They follow you
+            """
+            self.client.postLogger(self.chroma_client, message)
+            print("Successfully logged tweet to follower")
+
 
     def reply_guy(self, check_interval: int = 120, additionalContext: str = ""):
         print("Starting monitoring reply guy targets...")

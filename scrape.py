@@ -8,7 +8,7 @@ import random
 
 def updateContext(links=config.links, thoughtProcess="", randomLink=True):
     context = []
-    links = config.links
+
     if randomLink:
         links = random.sample(links, 1)
 

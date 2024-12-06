@@ -196,33 +196,33 @@ def log_message(chromaClient, message, user="user", collectionName="pastInteract
     try : 
         collection = chromaClient.get_or_create_collection(collectionName)
         n = len(collection.get()["documents"])
-        collection.add(documents=[message], metadatas=[{"user": user}], ids=[str(n + 1) + "_" + str(int(time.time()))])
+        collection.add(documents=[message], metadatas=[{"user": user}], ids=[str(n)])
+        print("Logging message to Chroma : " + str(n) )
     except Exception as e:
         print(e)
 
 
-def fetch_history(chromaClient, maxLength=2500, collectionName="pastInteractions"):
+def fetch_history(chromaClient, nRecords=5, collectionName="pastInteractions"):
     try:
           collection = chromaClient.get_collection(collectionName)
           # Get all documents from the collection
           info = collection.get()
           documents = info["documents"]
           n = len(documents)
+
+          if nRecords > n:
+               nRecords = n
           if (n == 0):
                return ""
-          # Concatenate all documents into a single string
+          
           chat_history_string = ""
-
-          for i in range(n) :
-               doc = documents[n - i]
-
-               while len(chat_history_string) + len(doc) < maxLength:
-                    chat_history_string = doc + "\n" + chat_history_string
-
-
+          for i in range(nRecords):
+               docId = str(n - i)
+               doc = collection.get(ids=[docId])
+               chat_history_string = doc['documents'][0] + "\n" + chat_history_string
+          
           histInstr = "\nUse this history to help inform your response. "
           chat_history_string = "History of previous interactions " + histInstr + " : \n" + chat_history_string
-               
           print("HISTORY FETCHED......")
                
           return chat_history_string
