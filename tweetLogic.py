@@ -22,15 +22,16 @@ chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
 def runTweetLoop(): 
 
+    ponderThoughts()
     r = random.randint(0, 100)
-    if r < 30:
+    if r < 10:
         tweet_to_followers()
-    elif r < 50:
-        reply_guy()
-    elif r < 75 : 
-        ponderThoughts()
-    else:
+    elif r < 40 : 
         search_tweets()
+    else:
+        reply_guy()
+
+    print("Finished tweet loop")
 
 
 def loadLinks():
@@ -47,7 +48,8 @@ def initTwitterClients(chroma):
         username=config.userName,
         password=os.getenv('TWITTER_PASSWORD'),
         email=os.getenv('TWITTER_EMAIL'),
-        chroma_client=chroma
+        chroma_client=chroma,
+        postLogger=log_message
     )
 
     interaction_handler = TwitterInteractionHandler(
@@ -56,7 +58,10 @@ def initTwitterClients(chroma):
         chroma_client=chroma,
         getUserContext=getUserContext,
         updateUserContext=updateUserContext,
-        fetchContext=fetch_context
+        fetchContext=fetch_context,
+        reply_targets=config.reply_targets,
+        search_terms=config.search_terms
+
     )
 
     return client, interaction_handler
@@ -94,11 +99,7 @@ def ponderThoughts():
     print("Pondering thoughts...")
     try:
         reflectThoughts(additionalContext=thoughts)
-        client = TwitterClient(
-            username=config.userName,
-            password=os.getenv('TWITTER_PASSWORD'),
-            email=os.getenv('TWITTER_EMAIL'),
-        )
+        client, interaction_handler = initTwitterClients(chromaClient)
         ### Log history to Chroma DB
         #log_message(chromaClient, thoughts, "user")
         print("Posting thoughts.....")
@@ -106,6 +107,10 @@ def ponderThoughts():
         print("Tweet: ", tweet)
         client.send_tweet(tweet)
         last_tweet["last_tweet"] = time.time()
+        message = f"""
+        You tweeted : {tweet}
+        """
+        log_message(chromaClient, message)
 
         with open("articles.json", "w") as f:
             json.dump({"links": links}, f)
@@ -129,7 +134,7 @@ def post_tweet():
 
 
     print("Posting tweet...")
-    context = prepareContext(getCurrentThoughts(), chromaClient)
+    context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
 
     try :
         tweet = getResponse(config.postPrompt, additionalContext=context)
@@ -156,7 +161,7 @@ def reply_guy():
     print("Replying to reply guy targets...")
     try:
         client, interaction_handler = initTwitterClients(chromaClient)
-        context = prepareContext(getCurrentThoughts(), chromaClient)
+        context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
         interaction_handler.reply_guy(additionalContext=context)
 
     except Exception as e:
@@ -165,7 +170,7 @@ def reply_guy():
 def search_tweets():
     try:
         client, interaction_handler = initTwitterClients(chromaClient)
-        context = prepareContext(getCurrentThoughts(), chromaClient)
+        context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
         interaction_handler.monitor_mentions(additionalContext=context)
 
     except Exception as e:

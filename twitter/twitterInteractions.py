@@ -14,7 +14,7 @@ class TwitterInteractionHandler:
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
         self.chroma_client = chroma_client
         # Make start_time timezone-aware
-        self.start_time = datetime.now(timezone.utc) - timedelta(hours=24)
+        self.start_time = datetime.now(timezone.utc) - timedelta(hours=12)
         self.search_terms = search_terms
         self.reply_targets = reply_targets
         self.getUserContext = getUserContext
@@ -95,7 +95,7 @@ class TwitterInteractionHandler:
             """
         return self.response_generator(tweet_text, additionalContext=additionalContext)
 
-    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 2):
+    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 2, minLength : int = 30):
         """Check for new mentions and respond to them"""
         print(f"Checking mentions for {searchTerm}")
         nResponses = 0
@@ -115,6 +115,10 @@ class TwitterInteractionHandler:
             
             for tweet in tweets:
                 tweet_id = tweet['id']
+
+                if len(tweet['text']) < minLength:
+                    print(f"Skipping tweet {tweet_id} because it is too short")
+                    continue
                 
                 tweet_created_at = datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S %z %Y')
                 if tweet_created_at < self.start_time:

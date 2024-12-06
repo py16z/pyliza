@@ -5,8 +5,10 @@ chroma_db_path = os.path.join(os.getcwd(), "chromadb")
 chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
 # DELETE ALL RECORDS
-collection = chromaClient.get_or_create_collection("pastInteractions")
-chromaClient.delete_collection("pastInteractions")
-collection = chromaClient.get_or_create_collection("pastInteractions")
+deleteCollection = "docs"
+
+collection = chromaClient.get_or_create_collection(deleteCollection)
+chromaClient.delete_collection(deleteCollection)
+collection = chromaClient.get_or_create_collection(deleteCollection)
 
 print(collection.count())

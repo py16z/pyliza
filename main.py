@@ -44,4 +44,4 @@ while True:
     except Exception as e:
         print(e)
     
-    time.sleep(300)
+    time.sleep(180)
