@@ -3,21 +3,34 @@ import json
 from scraping.scrape import getInfo
 from scraping.getContext import getContext
 
+from helpers import addTxt
+
 import config
 import random
 
-def updateContext(links=config.links, thoughtProcess="", randomLink=True):
+def updateContext(ChromaClient, links=config.links, thoughtProcess="", randomLink=True, addText=True):
     context = []
 
     if randomLink:
         links = random.sample(links, 1)
+
+    try : 
+        existingContext = open("context.json", "r").read()
+        additionalContext = json.loads(existingContext)["context"][0]
+    except : 
+        additionalContext = ""
 
     
     for link in links : 
         try : 
             info = getInfo(link)
             print("Scraping info from ", link)
-            context.append(getContext(str(info), thoughtProcess=thoughtProcess))
+            newContext = getContext(str(info), thoughtProcess=thoughtProcess, additionalContext=additionalContext)
+            context.append(newContext)
+            try : 
+                addTxt(ChromaClient, collectionName="context", info=newContext, fileName="context")
+            except Exception as e:
+                print(e)
         except Exception as e:
             print(e)
 

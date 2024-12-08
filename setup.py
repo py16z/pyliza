@@ -8,7 +8,7 @@ import config
 chroma_db_path = os.path.join(os.getcwd(), "chromadb")
 client = chromadb.PersistentClient(path=chroma_db_path)
 
-addDocs = False
+addDocs = True
 addInnerThoughts = False
 
 ### Load all .txt files from docs folder and add to vector DB

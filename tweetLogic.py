@@ -4,7 +4,7 @@ import sys
 from twitter.twitterClient import TwitterClient
 from twitter.twitterInteractions import TwitterInteractionHandler
 
-from helpers import getResponse, prepareContext, log_message, reflectThoughts, getUserContext, updateUserContext, fetch_context
+from helpers import getResponse, prepareContext, log_message, reflectThoughts, getUserContext, updateUserContext, fetch_context, fetch_history, getCurrentThoughts, updatePersona
 
 import chromadb
 
@@ -26,7 +26,7 @@ def runTweetLoop():
     r = random.randint(0, 100)
     if r < 10:
         tweet_to_followers()
-    elif r < 40 : 
+    elif r < 25 : 
         search_tweets()
     else:
         reply_guy()
@@ -40,7 +40,7 @@ def loadLinks():
         return links["links"]
     except Exception as e:
         print(f"Error: {e}")
-        return []
+        return config.links
 
 
 def initTwitterClients(chroma): 
@@ -66,10 +66,6 @@ def initTwitterClients(chroma):
 
     return client, interaction_handler
 
-def getCurrentThoughts():
-    thoughtProcess = json.load(open("initial_thoughts.json"))
-    thoughts = thoughtProcess["thought_process"]
-    return thoughts
 
 def ponderThoughts():
 
@@ -85,23 +81,27 @@ def ponderThoughts():
     thoughts = getCurrentThoughts()
     links = loadLinks()
 
+    ### SKIP THIS AS FIRECRAWL BUGGING OUT 
     if (len(links) > 0):
         i = random.randint(0, len(links) - 1)
         link = links[i]
         links.pop(i)
         print("Updating context with link: ", link)
-        updateContext(links=[link], thoughtProcess=thoughts)
+        updateContext(ChromaClient=chromaClient, links=[link], thoughtProcess=thoughts)
     else:
-        updateContext(thoughtProcess=thoughts)
+        updateContext(ChromaClient=chromaClient, thoughtProcess=thoughts)
     
     thoughts = getCurrentThoughts()
 
+
     print("Pondering thoughts...")
     try:
-        reflectThoughts(additionalContext=thoughts)
+        history = fetch_history(chromaClient, nRecords=10)
+        
+
+        reflectThoughts(additionalContext=history)
         client, interaction_handler = initTwitterClients(chromaClient)
-        ### Log history to Chroma DB
-        #log_message(chromaClient, thoughts, "user")
+        log_message(chromaClient, thoughts, "user", collectionName="Thoughts")
         print("Posting thoughts.....")
         tweet = getResponse(config.postPrompt, additionalContext=thoughts)
         print("Tweet: ", tweet)
@@ -113,10 +113,13 @@ def ponderThoughts():
         log_message(chromaClient, message)
 
         with open("articles.json", "w") as f:
-            json.dump({"links": links}, f)
+            json.dump({"links": links}, f, indent=4)
 
         with open("last_tweet.json", "w") as f:
-            json.dump(last_tweet, f)
+            json.dump(last_tweet, f, indent=4)
+
+        context = prepareContext(thoughts, chromaClient, thoughtProcess=thoughts)
+        updatePersona(chromaClient, additionalContext=context)
 
     except Exception as e:
         print(f"Error: {e}")

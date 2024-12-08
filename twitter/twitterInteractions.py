@@ -243,8 +243,7 @@ class TwitterInteractionHandler:
         tweet_text = self.generate_response(prompt, additionalContext=additionalContext)
         print("Tweet to follower : ", tweet_text)
         response = self.client.send_tweet(tweet_text)
-
-        print("Response : ", response)
+        #print("Response : ", response)
 
         if self.updateUserContext : 
             interaction = f"""

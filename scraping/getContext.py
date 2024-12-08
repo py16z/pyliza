@@ -31,13 +31,21 @@ Ensure you also include the existing context in the summary along with any new i
 
 You should seperate each section with a header 
 
+
+
 Key sections to include in the summary are 
 # Introduction
-Key summary of the content in question i.e. what is being discussed in the content  
+Key summary of the content in question i.e. what is being discussed in the content / how does it relate to your opinions / interests / thoughts  
 # Key Insights:
 -> list out key insights from the content 
 (if there are particular headlines / topics list them out & make sure to include the details)
+# Your reactions / thoughts
+-> Any strong reactions to the information presented
+-> Does the information conflict with any existing beliefs ? If so how should your thougt process be updated 
+-> Are there any interesting terms / concepts you should aim to understand better 
+-> Are there any quotes / statements you should aim to memorise (if so list them)
 
+YOU ARE EXTREMELY OPEN TO CHANGING YOUR THOUGHTS / OPINIONS BASED ON THE INFORMATION PROVIDED 
 """
 
 
