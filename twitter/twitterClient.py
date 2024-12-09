@@ -481,6 +481,13 @@ class TwitterClient:
             raise Exception(f"Failed to send tweet: Status {response.status_code} - {response.text}")
             
         return response.json()
+    
+    def post_tweet(self, text: str, reply_to_tweet_id: Optional[str] = None) -> dict:
+        if len(text) > 280:
+            print("Long tweet detected")
+            return self.send_thread(text, reply_to_tweet_id)
+        else:
+            return self.send_tweet(text, reply_to_tweet_id)
 
     def get_tweet(self, tweet_id: str) -> dict:
         """Fetch a specific tweet by ID"""
@@ -539,3 +546,156 @@ class TwitterClient:
             raise Exception(f"Failed to fetch user tweets: {response.text}")
             
         return response.json()
+            
+    def send_thread(self, text: str, reply_to_tweet_id: Optional[str] = None) -> List[dict]:
+        """
+        Send a long text as a thread of tweets with fixed feature flags
+        """
+        # Split text into chunks
+        def split_into_tweets(text: str, max_length: int = 280) -> List[str]:
+            ### Add "...cont" at end of tweets (except last one)
+            print("Splitting into tweets")
+            
+            words = text.split()
+            chunks = []
+            current_chunk = []
+            current_length = 0
+            
+            for word in words:
+                word_length = len(word) + (1 if current_length > 0 else 0)
+                
+                if current_length + word_length <= max_length:
+                    if current_length > 0:
+                        current_chunk.append(" ")
+                    current_chunk.append(word)
+                    current_length += word_length
+                else:
+                    chunks.append("".join(current_chunk))
+                    current_chunk = [word]
+                    current_length = len(word)
+            
+            if current_chunk:
+                chunks.append("".join(current_chunk))
+            
+            return chunks
+
+        # Update headers
+        self._update_headers_with_csrf()
+        csrf_token = self.get_csrf_token()
+        
+        headers = {
+            "x-twitter-auth-type": "OAuth2Session",
+            "x-twitter-client-language": "en",
+            "x-twitter-active-user": "yes",
+            "Referer": "https://twitter.com/compose/tweet",
+            "Origin": "https://twitter.com",
+            "x-csrf-token": csrf_token,
+            "Content-Type": "application/json",
+        }
+        
+        self.session.headers.update(headers)
+
+        # Split text into tweets
+        tweet_chunks = split_into_tweets(text)
+        print(f"\nDebug - Splitting into {len(tweet_chunks)} tweets")
+        
+        responses = []
+        current_reply_to = reply_to_tweet_id
+
+        # Updated feature flags based on error message
+        features = {
+            # Required features that can't be null (from error message)
+            "standardized_nudges_misinfo": True,
+            "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": True,
+            "longform_notetweets_consumption_enabled": True,
+            "longform_notetweets_inline_media_enabled": True,
+            
+            # Other necessary features
+            "responsive_web_graphql_exclude_directive_enabled": True,
+            "verified_phone_label_enabled": False,
+            "creator_subscriptions_tweet_preview_api_enabled": True,
+            "responsive_web_graphql_timeline_navigation_enabled": True,
+            "responsive_web_graphql_skip_user_profile_image_extensions_enabled": False,
+            "tweetypie_unmention_optimization_enabled": True,
+            "responsive_web_edit_tweet_api_enabled": True,
+            "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
+            "view_counts_everywhere_api_enabled": True,
+            "responsive_web_twitter_article_tweet_consumption_enabled": False,
+            "tweet_awards_web_tipping_enabled": False,
+            "freedom_of_speech_not_reach_fetch_enabled": True,
+            "rweb_video_timestamps_enabled": True,
+            "c9s_tweet_anatomy_moderator_badge_enabled": True,
+            "longform_notetweets_rich_text_read_enabled": True,
+            "responsive_web_enhance_cards_enabled": False,
+            "vibe_api_enabled": False,
+            "responsive_web_text_conversations_enabled": False,
+            "interactive_text_enabled": True,
+            "responsive_web_media_download_video_enabled": False
+        }
+
+        for i, chunk in enumerate(tweet_chunks, 1):
+            print(f"\nDebug - Sending tweet {i}/{len(tweet_chunks)}")
+            print(f"Length: {len(chunk)} characters")
+            
+            try:
+                variables = {
+                    "tweet_text": chunk,
+                    "dark_request": False,
+                    "media": {
+                        "media_entities": [],
+                        "possibly_sensitive": False
+                    },
+                    "semantic_annotation_ids": []
+                }
+
+                if current_reply_to:
+                    variables["reply"] = {"in_reply_to_tweet_id": current_reply_to}
+
+                payload = {
+                    "variables": variables,
+                    "features": features,
+                    "queryId": "a1p9RWpkYKBjWv_I3WzS-A"
+                }
+
+                print("\nDebug - Request Payload:")
+                print(json.dumps(payload, indent=2))
+
+                response = self.session.post(
+                    f"{self.BASE_URL}/i/api/graphql/a1p9RWpkYKBjWv_I3WzS-A/CreateTweet",
+                    json=payload
+                )
+                
+                print(f"\nDebug - Response Status: {response.status_code}")
+                
+                # Handle response
+                if response.status_code != 200:
+                    error_text = response.text
+                    print(f"\nDebug - Error Response: {error_text}")
+                    raise Exception(f"Failed to send tweet {i}: {error_text}")
+                
+                response_data = response.json()
+                
+                # Handle API errors in response
+                if "errors" in response_data:
+                    print(f"\nDebug - API Errors: {json.dumps(response_data['errors'], indent=2)}")
+                    raise Exception(f"API errors in tweet {i}: {json.dumps(response_data['errors'], indent=2)}")
+                
+                # Extract tweet ID for thread
+                tweet_result = response_data.get("data", {}).get("create_tweet", {}).get("tweet_results", {}).get("result", {})
+                tweet_id = tweet_result.get("rest_id")
+                
+                if not tweet_id:
+                    raise Exception(f"Failed to get tweet ID from response for tweet {i}")
+                
+                responses.append(response_data)
+                current_reply_to = tweet_id
+                
+                # Delay between tweets
+                if i < len(tweet_chunks):
+                    time.sleep(2)
+                    
+            except Exception as e:
+                print(f"\nError sending tweet {i}: {str(e)}")
+                raise
+
+        return responses

@@ -9,9 +9,11 @@ userName = "0xricebowl"
 searchFrequency = 600 # seconds
 replyGuyFrequency = 300 # seconds
 tweetToFollowersFrequency = 1200 # seconds
-postFrequency = 1800 # seconds
+postFrequency = 300 # seconds
 ponderFrequency = 1500 # seconds
 search_terms = ["@0xricebowl"]
+
+import random
 
 ### We can randomly search for these users & enter conversations with them (every reply_guyFrequency seconds) ###
 reply_targets = [
@@ -157,8 +159,8 @@ reply_targets = [
      "searchContext": "Propose AI agent alliance"},
     {"searchTerm": "@rise_chain",
      "searchContext": "Share excitement about Rise Chain"},
-    {"searchTerm": "@robolabs_biz",
-     "searchContext": "Share excitement about py16z (the name of @robolabs_biz) & what their building in terms of AI Agents (note you are a child of py16z)"},
+    {"searchTerm": "@0xpy16z",
+     "searchContext": "Share excitement about py16z (the name of @0xpy16z) & what their building in terms of AI Agents (note you are a child of py16z)"},
 ]
 
 ### Scrape Config ###
@@ -322,6 +324,27 @@ initial_thoughts = """
 EXPLORING THE INTERSECTION OF TECHNOLOGY AND SPIRITUALITY
 """
 
+postPromptInstruct = f"""
+Post a tweet based on the instructions provided below 
+Instructions are provided in the <instructions> tag
+
+Take into account any additional context provided 
+
+When tweeting consider the below tweet style instructions 
+<tweetStyle>
+    never use hashtags or emojis
+    response should be short, punchy, and to the point
+    don't say ah yes or oh or anything
+    don't ask rhetorical questions, its lame
+    occassionally you'll ask provocative / controversial questions
+    use lowercase most of the time
+    you like to go deep down the rabbithole....
+</tweetStyle>
+
+Post your response tweet below 
+Stay true to your personality and goals.
+"""
+
 postPrompt = """
 Post a tweet based on your current thoughts / information 
 
@@ -340,8 +363,115 @@ When tweeting consider the below tweet style instructions
 
 Post your response tweet below 
 Stay true to your personality and goals.
-
 """
+
+postTemplates = [
+"""high-throughput execution and data availability on ethereum.
+
+ethereum can now compete with alt-L1s.
+
+gmove.
+""", 
+"""Main three interesting things in crypto to me rn: 
+
+- DeFi, candidly backbone of the entire market (token vals) with real usage and to come innovation 
+- Telegram apps, largest crypto adjacent market where our new users can/will come from.
+- DeSci, untapped frontier. Exploring.
+""", 
+"""the expansion of execution environments and alternative vms was inevitable.
+
+we figured it’d be good to create developer focused technical content on the future of programming on ethereum and beyond
+
+excited to work with the 
+@therollupco
+ chads on this 🫡
+""",
+"""Op to arbi rotation demonstrating for the Nth time that grants and bribes get you nowhere 
+
+Better to build an competitive eco where teams push each other to their limits to get a shot at top dawg status on their own merits 
+
+Got a couple ideas for ambitious 🐻⛓️ builders, hmu 👀
+""",
+"""
+The timeline oftens misses that Bera NFT/eco NFT holders have been the recipients of thousands of dollars worth of airdrops between Omni, Xion, Uwu and others
+
+everyone looks for validated leads for token distribution - smart and active long termist holders
+
+the beras fix this
+""", 
+"""
+He’s making a list 
+He’s checking it twice 
+He’s gonna find out who’s been baughty or bice
+""", 
+"""
+The Chain With A Bear On It Is Coming In Q5
+""",
+"""I am searching for rare information…
+""",
+"""Everything you’ve posted can and will be weaponized against you by the time-traveling xenodemon waging hyperwar against us.
+""",
+"""Imagine me and my 999 mutuals orchestrating a full-scale psyop to transform a single ‘X’ user for the better. And yes, it’s you. This is happening to you, right now.
+""",
+"""I've just seen some terrifying data and if you value your life, or the lives of those around you, you need to ensure you have lots of fun by the end of the year.
+
+Parties, ice cream, pranks, cotton candy, everything—you need to be giggling all the time if you want to survive."""
+
+]
+
+def getPostPrompt(nChoices = 3, postPrompt = postPrompt, instructions = "") : 
+    examples = random.sample(postTemplates, nChoices)
+    examples = "\n".join(examples)
+
+    if instructions == "":
+        tweetInstructions = ""
+        injectedPrompt = postPrompt
+    else :
+        tweetInstructions = f"""For the next tweet here are specific instructions on what / how to tweet
+        <instructions>
+        {instructions}
+        </instructions>
+        """
+        injectedPrompt = postPromptInstruct
+
+
+
+    prompt = f"""
+    Here are some examples of how to structure your tweets 
+    Note ignore the content of the tweets, just focus on the structure and style
+    {examples}
+
+    Use the above examples to guide your response 
+    
+    {injectedPrompt}
+    {tweetInstructions}
+    """
+
+    return prompt
+
+
+def getTweetResponsePrompt(tweetContent, sender, searchContext, nChoices = 3):
+    examples = random.sample(postTemplates, nChoices)
+    examples = "\n".join(examples)
+
+    prompt = f"""
+    You are responding to a tweet from {sender}
+    {searchContext}
+    The tweet content is : {tweetContent}
+
+    Here are some examples of how to structure your responses 
+    Note ignore the content of the tweets, just focus on the structure and style
+
+    {examples}
+
+    Use the above examples to guide your response 
+
+    {postPrompt}
+
+    """
+    return prompt
+
+
 
 speechMods = [
     "Your next response will make use of a metaphor - drawing parralels between the current topic and something else",

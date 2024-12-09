@@ -53,8 +53,41 @@ def getAgentPrompt():
 
      try : 
           persona = json.load(open("persona.json"))
+          description = persona["persona"]["description"]
+          lore = persona["persona"]["lore"]
+          goals = persona["persona"]["goals"]
+          personality = persona["persona"]["personality"]
+          speech = persona["persona"]["speech"]
+          
           personaPrompt = f"""
-          {persona['persona']}
+          Below is your current personality - use this to help inform your responses / future actions
+          
+
+          This is a high level description of you 
+          <description>
+          {description}
+          </description>
+
+          This is some lore / background information about you 
+          <lore>
+          {lore}
+          </lore>
+          
+          This is a list of your goals & objectives 
+          <goals>
+          {goals}
+          </goals>
+          
+          This is a description of your personality 
+          <personality>
+          {personality}
+          </personality>
+          
+          This is a description of how you speak / respond (whenever responding make sure to use this style as a guide) 
+          <speech>
+          {speech}
+          </speech>
+          
           {config.exampleMessages}
           """
      except : 
@@ -69,11 +102,10 @@ def getAgentPrompt():
           """
      prompt = f"""
      You are {config.name}, 
-     
 
      You're Twitter handle is @{config.userName}
 
-     
+     Below is your personality - use this to help inform your responses / future actions
      {personaPrompt}
 
      This is your current thought process 
@@ -293,29 +325,6 @@ def fetch_history(chromaClient, nRecords=5, collectionName="pastInteractions"):
         return ""
 
 
-def getTweetResponsePrompt(tweetContent, sender, searchContext):
-     prompt = f"""
-     You are responding to a tweet from {sender}
-     {searchContext}
-     The tweet content is : {tweetContent}
-
-     When tweeting consider the below tweet style instructions 
-     <tweetStyle>
-          never use hashtags or emojis
-          response should be short, punchy, and to the point
-          don't say ah yes or oh or anything
-          don't ask rhetorical questions, its lame
-          occassionally you'll ask provocative / controversial questions
-          use lowercase most of the time
-          you like to go deep down the rabbithole....
-     </tweetStyle>
-
-     Post your response tweet below 
-     Stay true to your personality and goals.
-
-     """
-     return prompt
-
 
 def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True, includeDocs=True, includeInnerThoughts=True, collectionName="docs", includeUser=False, userId = "user", includeScrapedContext=True):
      context = ""
@@ -479,26 +488,48 @@ def updatePersona(client, additionalContext="") :
      Based on this return an updated personality 
      You should be continually striving to improve, learn & become smarter & stronger / more influential
 
-
      The updated personality should be formatted as follows 
 
-     ###Updated Personality Format###
-     Description 
-     - A high level description of 
+     <description>
+     - A high level description of the character / persona 
+     This can include their beliefs / interests / background etc 
+     </description>
 
-     You have the following high level goals: 
-     ###Goals
-     (This should include a list of your goals & objectives )
-     You have the following personality:
-     ###Personality
-     (This should describe your personality)
-     You have the following way of responding / speaking 
-     ###Speech
-     (This should describe how you speak etc )
+     <lore>
+     Any relevant lore / background information about the character / persona 
+     </lore>
+
+     <goals>
+     - A list of your goals & objectives 
+     </goals>
+
+     <personality>
+     - A description of your personality 
+     </personality>
+
+     <speech>
+     - A description of how you speak / respond 
+     </speech>
+
      """
 
      persona = getResponse(updatePersonaPrompt, additionalContext=additionalContext)
-     
+
+     ### Format the persona as a json object 
+     lore = persona.split("<lore>")[1].split("</lore>")[0]
+     description = persona.split("<description>")[1].split("</description>")[0]
+     goals = persona.split("<goals>")[1].split("</goals>")[0]
+     personality = persona.split("<personality>")[1].split("</personality>")[0]
+     speech = persona.split("<speech>")[1].split("</speech>")[0]
+
+     persona = {
+          "lore" : lore,
+          "description" : description,
+          "goals" : goals,
+          "personality" : personality,
+          "speech" : speech
+     }
+
      json.dump({'persona': persona}, open("persona.json", "w"))
      print("Updated Persona: ", persona)
 

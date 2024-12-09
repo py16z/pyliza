@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 
 import config
 
+from onChainReader import monitorChain, processLogs
+
 import json
 import random
 from scrape import updateContext
@@ -22,16 +24,59 @@ chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
 def runTweetLoop(): 
 
-    ponderThoughts()
+    logs = monitorChain()
+    processLogs(logs)
+
+    if checkQueuedTweets():
+        processQueuedTweets()
+    else:
+        ponderThoughts()
+    
     r = random.randint(0, 100)
-    if r < 10:
-        tweet_to_followers()
-    elif r < 25 : 
+    if r < 25 : 
         search_tweets()
+    elif r <75 : 
+        reply_to_followers()
     else:
         reply_guy()
 
     print("Finished tweet loop")
+
+
+def checkQueuedTweets():
+    try : 
+        queuedTweets = json.load(open("queuedTweets.json"))
+        print("Tweets in queue: ", len(queuedTweets["tweets"]))
+
+        ### CHeck time since last tweet
+        try : 
+            last_tweet = json.load(open("last_tweet.json"))
+            last_tweet_time = last_tweet["last_tweet"]
+            if time.time() - last_tweet_time < config.postFrequency:
+                print("Not posting tweet, too soon...")
+                return False
+        except Exception as e:
+            print(f"Error: {e}")
+
+        return len(queuedTweets["tweets"]) > 0
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+def processQueuedTweets():
+    try : 
+        print("Processing queued tweets...")
+        queuedTweets = json.load(open("queuedTweets.json"))
+        instructions = queuedTweets["tweets"][0]
+        print("Posting tweet based on instructions: ", instructions)
+        post_tweet(instructions=instructions)
+        
+        queuedTweets["tweets"].pop(0)
+        json.dump(queuedTweets, open("queuedTweets.json", "w"))
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
 
 
 def loadLinks():
@@ -73,7 +118,7 @@ def ponderThoughts():
     last_tweet_time = last_tweet["last_tweet"]
 
     print("Time since last tweet: ", time.time() - last_tweet_time)
-    if time.time() - last_tweet_time < config.postFrequency:
+    if time.time() - last_tweet_time < config.ponderFrequency:
         print("Not posting tweet, too soon...")
         return
 
@@ -103,9 +148,9 @@ def ponderThoughts():
         client, interaction_handler = initTwitterClients(chromaClient)
         log_message(chromaClient, thoughts, "user", collectionName="Thoughts")
         print("Posting thoughts.....")
-        tweet = getResponse(config.postPrompt, additionalContext=thoughts)
+        tweet = getResponse(config.getPostPrompt(), additionalContext=thoughts)
         print("Tweet: ", tweet)
-        client.send_tweet(tweet)
+        client.post_tweet(tweet)
         last_tweet["last_tweet"] = time.time()
         message = f"""
         You tweeted : {tweet}
@@ -125,7 +170,7 @@ def ponderThoughts():
         print(f"Error: {e}")
 
 
-def post_tweet():
+def post_tweet(instructions=""):
     
     last_tweet = json.load(open("last_tweet.json"))
     last_tweet_time = last_tweet["last_tweet"]
@@ -134,20 +179,18 @@ def post_tweet():
         print("Not posting tweet, too soon...")
         return
     
-
-
     print("Posting tweet...")
     context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
 
     try :
-        tweet = getResponse(config.postPrompt, additionalContext=context)
+        tweet = getResponse(config.getPostPrompt(instructions=instructions), additionalContext=context)
         print("Tweet: ", tweet)
 
         client, interaction_handler = initTwitterClients(chromaClient)
 
         log_message(chromaClient, tweet, "user")
 
-        client.send_tweet(tweet)
+        client.post_tweet(tweet)
     except Exception as e:
         print(f"Error: {e}")
 
@@ -169,6 +212,17 @@ def reply_guy():
 
     except Exception as e:
         print(f"Error: {e}")    
+
+def reply_to_followers():
+    print("Replying to followers...")
+    try:
+        client, interaction_handler = initTwitterClients(chromaClient)
+        context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
+        interaction_handler.reply_to_followers(additionalContext=context)
+
+    except Exception as e:
+        print(f"Error: {e}")    
+
 
 def search_tweets():
     try:

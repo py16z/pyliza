@@ -16,6 +16,7 @@ chromadb = "^0.5.15"
 together = "^1.3.3"
 firecrawl = "^1.4.0"
 anthropic = "^0.37.1"
+web3 = "^7.6.0"
 
 
 [build-system]

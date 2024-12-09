@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import os
 import random
 from datetime import timezone
-from helpers import getTweetResponsePrompt
+from config import getTweetResponsePrompt
 
 class TwitterInteractionHandler:
     def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, fetchContext=None, updateUserContext=None):
@@ -136,6 +136,7 @@ class TwitterInteractionHandler:
                 # Skip if we've already responded to this tweet
                 if self.has_responded_to_tweet(tweet_id):
                     print(f"Already responded to tweet {tweet_id}")
+                    nResponses += 1
                     continue
                 
 
@@ -154,7 +155,7 @@ class TwitterInteractionHandler:
                 response_text = self.generate_response(tweetPrompt, additionalContext=respondContext)
                 print("RESPONSE TEXT: ", response_text)
                 nResponses += 1
-                response = self.client.send_tweet(response_text, tweet_id)
+                response = self.client.post_tweet(response_text, tweet_id)
 
                 interaction = f"""
                 You had the following interaction with {tweet['username']} 
@@ -242,7 +243,7 @@ class TwitterInteractionHandler:
 
         tweet_text = self.generate_response(prompt, additionalContext=additionalContext)
         print("Tweet to follower : ", tweet_text)
-        response = self.client.send_tweet(tweet_text)
+        response = self.client.post_tweet(tweet_text)
         #print("Response : ", response)
 
         if self.updateUserContext : 
@@ -263,6 +264,23 @@ class TwitterInteractionHandler:
             self.client.postLogger(self.chroma_client, message)
             print("Successfully logged tweet to follower")
 
+    def reply_to_followers(self, check_interval: int = 120, additionalContext: str = ""):
+        print("Starting monitoring reply guy targets...")
+        
+        try:
+            # Check if reply_targets is not empty
+            followers = self.client.get_followers(self.client.username)
+            
+            ### randomly select a follower and tweet to them
+            follower = random.choice(followers)
+
+
+            reply_search = f"from:@{follower['username']}"
+            searchContext = follower["description"]
+            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext)
+
+        except Exception as e:
+            print(f"Error in mention monitoring loop: {str(e)}")
 
     def reply_guy(self, check_interval: int = 120, additionalContext: str = ""):
         print("Starting monitoring reply guy targets...")
