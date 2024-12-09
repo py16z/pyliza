@@ -553,31 +553,50 @@ class TwitterClient:
         """
         # Split text into chunks
         def split_into_tweets(text: str, max_length: int = 280) -> List[str]:
-            ### Add "...cont" at end of tweets (except last one)
-            print("Splitting into tweets")
-            
-            words = text.split()
-            chunks = []
-            current_chunk = []
-            current_length = 0
-            
-            for word in words:
-                word_length = len(word) + (1 if current_length > 0 else 0)
-                
-                if current_length + word_length <= max_length:
-                    if current_length > 0:
-                        current_chunk.append(" ")
-                    current_chunk.append(word)
-                    current_length += word_length
+            # Split text by newlines first
+            initial_chunks = text.split('\n')
+            final_chunks = []
+
+            for chunk in initial_chunks:
+                words = chunk.split()
+                current_chunk = []
+                current_length = 0
+
+                for word in words:
+                    word_length = len(word) + (1 if current_length > 0 else 0)
+
+                    if current_length + word_length + len("\n...cont") <= max_length:
+                        if current_length > 0:
+                            current_chunk.append(" ")
+                        current_chunk.append(word)
+                        current_length += word_length
+                    else:
+                        # Add\n ...cont to the current chunk and append to final_chunks
+                        final_chunks.append("".join(current_chunk) + "\n...cont")
+                        current_chunk = [word]
+                        current_length = len(word)
+
+                # Add the last chunk without\n ...cont if it's not empty
+                if current_chunk:
+                    final_chunks.append("".join(current_chunk))
+
+            # Remove\n ...cont from the last chunk if it was added
+            if final_chunks and final_chunks[-1].endswith("\n...cont"):
+                final_chunks[-1] = final_chunks[-1][:-len("\n...cont")]
+
+            # Reconcile small chunks
+            reconciled_chunks = []
+            for i in range(len(final_chunks)):
+                if i > 0 and len(final_chunks[i]) < 50:  # Arbitrary small chunk threshold
+                    # Try to merge with the previous chunk if it fits
+                    if len(reconciled_chunks[-1]) + len(final_chunks[i]) + len("\n...cont") <= max_length:
+                        reconciled_chunks[-1] = reconciled_chunks[-1] + " " + final_chunks[i]
+                    else:
+                        reconciled_chunks.append(final_chunks[i])
                 else:
-                    chunks.append("".join(current_chunk))
-                    current_chunk = [word]
-                    current_length = len(word)
-            
-            if current_chunk:
-                chunks.append("".join(current_chunk))
-            
-            return chunks
+                    reconciled_chunks.append(final_chunks[i])
+
+            return reconciled_chunks
 
         # Update headers
         self._update_headers_with_csrf()
@@ -657,15 +676,15 @@ class TwitterClient:
                     "queryId": "a1p9RWpkYKBjWv_I3WzS-A"
                 }
 
-                print("\nDebug - Request Payload:")
-                print(json.dumps(payload, indent=2))
+                #print("\nDebug - Request Payload:")
+                #print(json.dumps(payload, indent=2))
 
                 response = self.session.post(
                     f"{self.BASE_URL}/i/api/graphql/a1p9RWpkYKBjWv_I3WzS-A/CreateTweet",
                     json=payload
                 )
                 
-                print(f"\nDebug - Response Status: {response.status_code}")
+                #print(f"\nDebug - Response Status: {response.status_code}")
                 
                 # Handle response
                 if response.status_code != 200:
