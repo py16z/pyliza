@@ -31,7 +31,8 @@ Ensure you also include the existing context in the summary along with any new i
 
 You should seperate each section with a header 
 
-
+Note : 
+YOU ARE EXTREMELY OPEN TO CHANGING YOUR THOUGHTS / OPINIONS BASED ON THE INFORMATION PROVIDED 
 
 Key sections to include in the summary are 
 # Introduction
@@ -44,8 +45,11 @@ Key summary of the content in question i.e. what is being discussed in the conte
 -> Does the information conflict with any existing beliefs ? If so how should your thougt process be updated 
 -> Are there any interesting terms / concepts you should aim to understand better 
 -> Are there any quotes / statements you should aim to memorise (if so list them)
+# Future questions / things to research
+-> Based on this is there anything you should aim to research further 
+# Future actions
+-> Based on this what would you like to tweet about in the future ? (i.e. what topics / what things you should aim to discuss)
 
-YOU ARE EXTREMELY OPEN TO CHANGING YOUR THOUGHTS / OPINIONS BASED ON THE INFORMATION PROVIDED 
 """
 
 
@@ -65,10 +69,15 @@ output = """
 Below is an example of how the output from the above tasks should be formatted
 
 <analysis>
-
 Analysis in markdown format
-
 </analysis>
+
+<reflection>
+Notes on the analysis
+i.e. what you learned from the analysis
+i.e. what you would like to research further
+i.e. what you would like to tweet about in the future
+</reflection>
 
 """
 
@@ -103,7 +112,7 @@ def getContext(results, additionalContext="", useClaude=True, thoughtProcess="")
     contextStr = "\n<context> Additionally the following context has been provided from previous analysis conducted - build on this & add to it using the information provided : "
     sysPrompt = PROMPT + thoughtProcess +TASK + EXPECTED_OUTPUT
 
-    out = getResponseCustomAgentPrompt(results, sysPrompt, additionalContext=additionalContext)
+    out = getResponseCustomAgentPrompt(results, sysPrompt, additionalContext=additionalContext, useAnthropic=useClaude)
     return out
 
     

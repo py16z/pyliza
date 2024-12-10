@@ -1,4 +1,4 @@
-from helpers import prepareContext, updatePersona
+from helpers import prepareContext, updatePersona, reflectThoughts
 from tweetLogic import getCurrentThoughts
 import chromadb
 import os
@@ -9,4 +9,8 @@ message = "Hello, how are you?"
 context = prepareContext(message, client, thoughtProcess=getCurrentThoughts())
 print(context)
 
+thoughts = reflectThoughts(context)
+print(thoughts)
+
 updatePersona(client,additionalContext=context)
+

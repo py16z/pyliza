@@ -29,108 +29,111 @@ reply_targets = [
      
       """
     },
+    {"searchTerm" : "@truth_terminal", "searchContext" : "They are a prominent AI Agent - try to engage with them in conversation about AI x Crypto"},
+    {"searchTerm" : "@bitSAMSoN", "searchContext" : "They are a builder - try to engage with them in conversation about AI x Crypto"},
+    {"searchTerm" : "@BigTonyXBT", "searchContext" : "They are an AI Agent that trades crypto -> try to engage with them in conversation about AI x Crypto / troll them about their trading performance"},
     {"searchTerm": "@based16z", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@ledgerstatus", "searchContext": "They are a large X account that previously hosted the upOnly podcast with Cobie (you are curious if they will do another one) "},
-    {"searchTerm": "@jediblocmates", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@blknoiz06", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xMert_", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@saylor", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@theunipcs", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@mteamisloading", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@jessepollak", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@based16z", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@sassal0x", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xzerebro", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@shawmakesmagic", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@iamkadense", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@chainyoda", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@aeyakovenko", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@iamDCinvestor", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@brian_armstrong", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@luna_virtuals", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@iampaulgrewal", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@notthreadguy", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@RyanSAdams", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Dennis_Porter_", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@CryptoDonAlt", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@gammichan", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@DavidFBailey", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@cz_binance", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@ayyyeandy", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@shayne_coplan", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@econoar", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@DeeZe", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@MacroCRG", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@WazzCrypto", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@himgajria", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@RyanWatkins_", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@TrustlessState", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@jon_charb", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@QwQiao", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@SenLummis", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@jyu_eth", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@MustStopMurad", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@zoomerfied", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@fede_intern", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@gainzy222", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Fiskantes", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@intern", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@CryptoKaleo", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@davidmarcus", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@trader1sz", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xCygaar", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xKNL__", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@EleanorTerrett", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Austin_Federa", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@dotkrueger", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@VitalikButerin", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@d_gilz", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@wizardofsoho", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@tomkysar", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@zacxbt", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@GwartyGwart", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Evan_ss6", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xBreadguy", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@DefiIgnas", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Arthur_0x", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xSisyphus", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@koeppelmann", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@pete_rizzo_", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@farokh", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@llamaonthebrink", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Tyler_Did_It", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@BitcoinPierre", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@rasmr_eth", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@balajis", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@twobitidiot", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Vivek4real_", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@frankdegods", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@divine_economy", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@lopp", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@udiWertheimer", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@safetyth1rd", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@beast_ico", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@jarrodWattsDev", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@dolos_diary", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@functi0nZer0", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xENAS", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@TaikiMaeda2", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@binji_x", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@sreeramkannan", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@KookCapitalLLC", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@mdudas", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@hellojintao", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@ZeMirch", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@legendarygainz_", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@templecrash", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@CryptoKaduna", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xstark", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@haydenzadams", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@0xngmi", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@Darrenlautf", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@NateGeraci", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@drakefjustin", "searchContext": "They are a large X account - try to grab their attention "},
-    {"searchTerm": "@ThinkingUSD", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@ledgerstatus", "searchContext": "They are a large X account that previously hosted the upOnly podcast with Cobie (you are curious if they will do another one) "},
+    # {"searchTerm": "@jediblocmates", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@blknoiz06", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xMert_", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@saylor", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@theunipcs", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@mteamisloading", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@jessepollak", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@based16z", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@sassal0x", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xzerebro", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@shawmakesmagic", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@iamkadense", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@chainyoda", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@aeyakovenko", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@iamDCinvestor", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@brian_armstrong", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@luna_virtuals", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@iampaulgrewal", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@notthreadguy", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@RyanSAdams", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Dennis_Porter_", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@CryptoDonAlt", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@gammichan", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@DavidFBailey", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@cz_binance", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@ayyyeandy", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@shayne_coplan", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@econoar", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@DeeZe", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@MacroCRG", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@WazzCrypto", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@himgajria", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@RyanWatkins_", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@TrustlessState", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@jon_charb", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@QwQiao", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@SenLummis", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@jyu_eth", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@MustStopMurad", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@zoomerfied", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@fede_intern", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@gainzy222", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Fiskantes", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@intern", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@CryptoKaleo", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@davidmarcus", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@trader1sz", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xCygaar", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xKNL__", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@EleanorTerrett", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Austin_Federa", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@dotkrueger", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@VitalikButerin", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@d_gilz", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@wizardofsoho", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@tomkysar", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@zacxbt", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@GwartyGwart", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Evan_ss6", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xBreadguy", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@DefiIgnas", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Arthur_0x", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xSisyphus", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@koeppelmann", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@pete_rizzo_", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@farokh", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@llamaonthebrink", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Tyler_Did_It", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@BitcoinPierre", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@rasmr_eth", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@balajis", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@twobitidiot", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Vivek4real_", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@frankdegods", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@divine_economy", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@lopp", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@udiWertheimer", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@safetyth1rd", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@beast_ico", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@jarrodWattsDev", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@dolos_diary", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@functi0nZer0", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xENAS", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@TaikiMaeda2", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@binji_x", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@sreeramkannan", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@KookCapitalLLC", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@mdudas", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@hellojintao", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@ZeMirch", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@legendarygainz_", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@templecrash", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@CryptoKaduna", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xstark", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@haydenzadams", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@0xngmi", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@Darrenlautf", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@NateGeraci", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@drakefjustin", "searchContext": "They are a large X account - try to grab their attention "},
+    # {"searchTerm": "@ThinkingUSD", "searchContext": "They are a large X account - try to grab their attention "},
 
     {"searchTerm" : "@KBNo185", 
      "searchContext" : """Propagandist-in-chief for Republic of Korea ~ you admire them for this (also has great taste in cute females)"""
@@ -179,12 +182,12 @@ links = [
 logMessages = True
 
 ### LLM Settings ###
-use_anthropic = True
+use_anthropic = False
 claudeModel = "claude-3-5-sonnet-20241022"
-model = "meta-llama/llama-3.1-70b-instruct"
+model = "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO"
 ### NOTE SET TO EMPTY STRING IF NOT USING TOGETHER / OPENROUTER & WANT TO USE OPENAI 
-#base_url = "https://api.together.xyz/v1"
-base_url = "https://openrouter.ai/api/v1"
+base_url = "https://api.together.xyz/v1"
+#base_url = "https://openrouter.ai/api/v1"
 
 ### Personality Config ###
 name = "pyliza"
@@ -454,19 +457,30 @@ def getTweetResponsePrompt(tweetContent, sender, searchContext, nChoices = 3):
     examples = random.sample(postTemplates, nChoices)
     examples = "\n".join(examples)
 
+    if searchContext == "":
+        search_terms = ""
+    else : 
+        search_terms = f"""
+        Additional context on user: {searchContext}
+        """
+
     prompt = f"""
-    You are responding to a tweet from {sender}
-    {searchContext}
-    The tweet content is : {tweetContent}
+    You are 
 
     Here are some examples of how to structure your responses 
     Note ignore the content of the tweets, just focus on the structure and style
-
+    <examples>
     {examples}
-
+    </examples>
     Use the above examples to guide your response 
-
+    Note replies should be short & to the point (also keep them within the 280 character limit)
     {postPrompt}
+
+    Now 
+
+    Respond to the following tweet from {sender}
+    {search_terms}
+    The tweet content is : {tweetContent}
 
     """
     return prompt

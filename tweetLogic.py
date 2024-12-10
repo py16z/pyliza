@@ -149,8 +149,9 @@ def ponderThoughts():
         log_message(chromaClient, thoughts, "user", collectionName="Thoughts")
         print("Posting thoughts.....")
         tweet = getResponse(config.getPostPrompt(), additionalContext=thoughts)
-        print("Tweet: ", tweet)
+        #print("Tweet: ", tweet)
         client.post_tweet(tweet)
+        #client.post_tweet(getCurrentThoughts())
         last_tweet["last_tweet"] = time.time()
         message = f"""
         You tweeted : {tweet}
