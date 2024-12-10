@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import os
 import random
 from datetime import timezone
-from config import getTweetResponsePrompt
+from config import getTweetResponsePrompt, TESTMODE
 
 class TwitterInteractionHandler:
     def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, fetchContext=None, updateUserContext=None):
@@ -95,7 +95,7 @@ class TwitterInteractionHandler:
             """
         return self.response_generator(tweet_text, additionalContext=additionalContext)
 
-    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 2, minLength : int = 30):
+    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 1, minLength : int = 30):
         """Check for new mentions and respond to them"""
         print(f"Checking mentions for {searchTerm}")
         nResponses = 0
@@ -154,6 +154,11 @@ class TwitterInteractionHandler:
                 # Generate and send response
                 response_text = self.generate_response(tweetPrompt, additionalContext=respondContext)
                 print("RESPONSE TEXT: ", response_text)
+
+               
+                if (TESTMODE): 
+                    continue
+                    ### SKIP POSTING TWEET
                 nResponses += 1
                 response = self.client.post_tweet(response_text, tweet_id)
 

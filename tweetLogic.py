@@ -24,13 +24,14 @@ chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
 def runTweetLoop(): 
 
-    logs = monitorChain()
-    processLogs(logs)
+    if not config.TESTMODE:
+        logs = monitorChain()
+        processLogs(logs)
 
-    if checkQueuedTweets():
-        processQueuedTweets()
-    else:
-        ponderThoughts()
+        if checkQueuedTweets():
+            processQueuedTweets()
+        else:
+            ponderThoughts()
     
     r = random.randint(0, 100)
     if r < 25 : 
@@ -143,7 +144,6 @@ def ponderThoughts():
     try:
         history = fetch_history(chromaClient, nRecords=10)
         
-
         reflectThoughts(additionalContext=history)
         client, interaction_handler = initTwitterClients(chromaClient)
         log_message(chromaClient, thoughts, "user", collectionName="Thoughts")

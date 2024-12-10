@@ -25,7 +25,7 @@ def updateContext(ChromaClient, links=config.links, thoughtProcess="", randomLin
         try : 
             info = getInfo(link)
             print("Scraping info from ", link)
-            newContext = getContext(str(info), thoughtProcess=thoughtProcess, additionalContext=additionalContext)
+            newContext = getContext(str(info), thoughtProcess=thoughtProcess, additionalContext=additionalContext, useClaude=True)
             context.append(newContext)
             try : 
                 addTxt(ChromaClient, collectionName="context", info=newContext, fileName="context")

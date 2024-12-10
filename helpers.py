@@ -21,26 +21,26 @@ import logging
 # Set the logging level for the specific logger to suppress warnings
 logging.getLogger('chromadb.segment.impl.vector.local_persistent_hnsw').setLevel(logging.ERROR)
 
-if config.use_anthropic:
-        client = Anthropic(
-            api_key=os.getenv("ANTHROPIC_API_KEY"),
-    )
+
+anthropicClient = Anthropic(
+     api_key=os.getenv("ANTHROPIC_API_KEY"),
+)
+
+if config.base_url == "" : 
+     client = OpenAI(
+          api_key=os.getenv("OPENAI_API_KEY"),
+     )
 else : 
-     if config.base_url == "" : 
+     if config.base_url == "https://openrouter.ai/api/v1" : 
           client = OpenAI(
-               api_key=os.getenv("OPENAI_API_KEY"),
+               api_key=os.getenv("OPENROUTER_API_KEY"),
+               base_url=config.base_url
           )
-     else : 
-          if config.base_url == "https://openrouter.ai/api/v1" : 
-               client = OpenAI(
-                    api_key=os.getenv("OPENROUTER_API_KEY"),
-                    base_url=config.base_url
-               )
-          if config.base_url == "https://api.together.xyz/v1" : 
-               client = OpenAI(
-                    api_key=os.getenv("TOGETHER_API_KEY"),
-                    base_url=config.base_url
-               )
+     if config.base_url == "https://api.together.xyz/v1" : 
+          client = OpenAI(
+               api_key=os.getenv("TOGETHER_API_KEY"),
+               base_url=config.base_url
+          )
 
 if config.useTogetherEmbeddings: 
      together = Together(api_key=os.getenv("TOGETHER_API_KEY"))
@@ -122,7 +122,7 @@ def getAgentPrompt():
 
 
 
-def getOpenAIResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6):
+def getOpenAIResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6, max_tokens=100):
 
 
     response = client.chat.completions.create(
@@ -131,11 +131,14 @@ def getOpenAIResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6):
             {"role": "system", "content": agentPrompt},
             {"role": "user", "content": prompt}
         ],
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p
     )
     return response.choices[0].message.content.strip()
 
 def getAnthropicResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6):
-    response = client.messages.create(
+    response = anthropicClient.messages.create(
         max_tokens=8192,
         system = prompt,
         model=config.claudeModel,
@@ -147,7 +150,7 @@ def getAnthropicResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6)
 
 
 
-def getResponse(prompt, additionalContext="", temperature=0.7, top_p=0.6, useAnthropic = config.use_anthropic):
+def getResponse(prompt, additionalContext="", temperature=0.7, top_p=0.6, useAnthropic = config.use_anthropic, max_tokens=60):
      agentPrompt = getAgentPrompt()
      print("Generating Response.........")
 
@@ -162,13 +165,13 @@ def getResponse(prompt, additionalContext="", temperature=0.7, top_p=0.6, useAnt
      if useAnthropic:      
           response = getAnthropicResponse(prompt, agentPrompt, config.claudeModel, temperature, top_p)
      else: 
-          response = getOpenAIResponse(prompt, agentPrompt, config.model, temperature, top_p)
+          response = getOpenAIResponse(prompt, agentPrompt, config.model, temperature, top_p, max_tokens)
 
      #print("Response Generated: ", response)
      return response
 
 
-def getResponseCustomAgentPrompt(prompt, agentPrompt, additionalContext="", temperature=0.7, top_p=0.6, useAnthropic = config.use_anthropic):
+def getResponseCustomAgentPrompt(prompt, agentPrompt, additionalContext="", temperature=0.7, top_p=0.6, useAnthropic = True):
      print("Generating Response.........")
      if additionalContext != "": 
           agentPrompt += f"\n\n Here is some additional context: {additionalContext}"
@@ -382,7 +385,7 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
      return context
 
 
-def reflectThoughts(additionalContext = ""):
+def reflectThoughts(additionalContext = "", useAnthropic=config.use_anthropic):
      thoughtProcess = json.load(open("initial_thoughts.json"))
      thoughts = thoughtProcess["thought_process"]
 
@@ -453,7 +456,7 @@ ALSO FEEL FREE TO EXPAND ON THE FORMAT & ADD YOUR OWN IDEAS / STRATEGIES ETC
 
      """
 
-     response = getResponse(thoughtPrompt, additionalContext=additionalContext)
+     response = getResponse(thoughtPrompt, additionalContext=additionalContext, max_tokens=1000, useAnthropic=useAnthropic)
 
      thoughtProcess["thought_process"] = response
      json.dump(thoughtProcess, open("initial_thoughts.json", "w"))
@@ -476,7 +479,7 @@ def getCurrentThoughts():
     thoughts = thoughtProcess["thought_process"]
     return thoughts
 
-def updatePersona(client, additionalContext="") : 
+def updatePersona(client, additionalContext="", useAnthropic=config.use_anthropic) : 
 
      thoughts = getCurrentThoughts()
      historicalInteractions = fetch_history(client)
@@ -515,7 +518,7 @@ def updatePersona(client, additionalContext="") :
 
      """
 
-     persona = getResponse(updatePersonaPrompt, additionalContext=additionalContext)
+     persona = getResponse(updatePersonaPrompt, additionalContext=additionalContext, max_tokens=1000, useAnthropic=useAnthropic)
 
      ### Format the persona as a json object 
      lore = persona.split("<lore>")[1].split("</lore>")[0]
