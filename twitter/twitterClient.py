@@ -718,3 +718,177 @@ class TwitterClient:
                 raise
 
         return responses
+    
+    def scrape_tweets(self, query: str, max_tweets: int = 1000, delay_between_requests: int = 2) -> List[Dict]:
+        """
+        Scrape tweets with pagination handling and rate limit awareness
+        
+        Args:
+            query (str): Search query
+            max_tweets (int): Maximum number of tweets to fetch
+            delay_between_requests (int): Delay in seconds between pagination requests
+        
+        Returns:
+            List[Dict]: List of tweet objects
+        """
+        all_tweets = []
+        tweets_per_request = 40  # Twitter's typical max per request
+        total_requests = (max_tweets + tweets_per_request - 1) // tweets_per_request
+        
+        try:
+            for i in range(total_requests):
+                if len(all_tweets) >= max_tweets:
+                    break
+                    
+                current_batch = self.search_tweets(query, tweets_per_request)
+                
+                # If we got no tweets back, we've hit the end
+                if not current_batch:
+                    break
+                    
+                # Filter out duplicates based on tweet ID
+                new_tweets = []
+                seen_ids = {tweet['id'] for tweet in all_tweets}
+                
+                for tweet in current_batch:
+                    if tweet['id'] not in seen_ids:
+                        new_tweets.append(tweet)
+                        seen_ids.add(tweet['id'])
+                
+                all_tweets.extend(new_tweets)
+                
+                # If we got fewer tweets than requested, we've hit the end
+                if len(current_batch) < tweets_per_request:
+                    break
+                    
+                # Sleep between requests to avoid rate limits
+                if i < total_requests - 1:
+                    time.sleep(delay_between_requests)
+                    
+            return all_tweets[:max_tweets]  # Trim to max_tweets if we went over
+            
+        except Exception as e:
+            print(f"Error during tweet scraping: {str(e)}")
+            return all_tweets  # Return what we got before the error
+
+    def get_tweet_updated(self, tweet_id: str, get_context: bool = True) -> Dict:
+        """
+        Get a tweet and its previous replies by parsing the conversation up to the target tweet.
+        
+        Args:
+            tweet_id (str): ID of the tweet to fetch
+            get_context (bool): Whether to fetch reply/quote context
+        
+        Returns:
+            Dict: Tweet object with context including previous replies in the conversation
+        """
+        def extract_tweet_data(tweet_result: Dict) -> Dict:
+            """Helper function to extract consistent tweet data"""
+            if not tweet_result:
+                return {}
+                
+            # Handle visibility results wrapper
+            if tweet_result.get('__typename') == 'TweetWithVisibilityResults':
+                tweet_result = tweet_result.get('tweet', {})
+                
+            legacy = tweet_result.get('legacy', {})
+            core = tweet_result.get('core', {})
+            user_results = core.get('user_results', {}).get('result', {})
+            user_legacy = user_results.get('legacy', {})
+            
+            return {
+                'id': legacy.get('id_str'),
+                'text': legacy.get('full_text'),
+                'username': user_legacy.get('screen_name'),
+                'name': user_legacy.get('name'),
+                'user_id': user_results.get('rest_id'),
+                'created_at': legacy.get('created_at'),
+                'conversation_id': legacy.get('conversation_id_str'),
+                'in_reply_to_status_id': legacy.get('in_reply_to_status_id_str'),
+                'in_reply_to_user_id': legacy.get('in_reply_to_user_id_str'),
+                'quoted_status_id': legacy.get('quoted_status_id_str')
+            }
+
+        try:
+            # Get the tweet data from API
+            tweet_data = self.get_tweet(tweet_id)
+            
+            # Get all entries from the response
+            entries = (tweet_data.get('data', {})
+                    .get('threaded_conversation_with_injections_v2', {})
+                    .get('instructions', [{}])[0]
+                    .get('entries', []))
+
+            reply_chain = []
+            reached_target = False
+            
+            # Process all entries to get tweets
+            for entry in entries:
+                entry_id = entry.get('entryId', '')
+                
+                # Handle direct tweet entries
+                if entry_id.startswith('tweet-'):
+                    tweet_result = (entry.get('content', {})
+                                .get('itemContent', {})
+                                .get('tweet_results', {})
+                                .get('result', {}))
+                    if tweet_result:
+                        tweet = extract_tweet_data(tweet_result)
+                        if tweet and tweet.get('id'):
+                            if tweet['id'] == tweet_id:
+                                reached_target = True
+                                reply_chain.append(tweet)
+                                break  # Stop processing once we hit our target tweet
+                            reply_chain.append(tweet)
+                            
+                # Handle conversation thread entries
+                elif entry_id.startswith('conversationthread-'):
+                    items = (entry.get('content', {})
+                            .get('items', []))
+                    for item in items:
+                        if item.get('entryId', '').startswith('conversationthread-'):
+                            tweet_result = (item.get('item', {})
+                                        .get('itemContent', {})
+                                        .get('tweet_results', {})
+                                        .get('result', {}))
+                            if tweet_result:
+                                tweet = extract_tweet_data(tweet_result)
+                                if tweet and tweet.get('id'):
+                                    if tweet['id'] == tweet_id:
+                                        reached_target = True
+                                        reply_chain.append(tweet)
+                                        break  # Stop processing once we hit our target tweet
+                                    reply_chain.append(tweet)
+                    if reached_target:
+                        break
+
+            # Format the reply chain
+            
+            formatted_reply_chain = "### The below is additional context on the full conversation prior to the tweet in question. \n\n"
+            for tweet in reply_chain[:-1]:
+                formatted_reply_chain += f"""
+                ###Sender @{tweet['username']}  
+                ###Message : 
+                {tweet['text']}
+                ###End of Tweet
+                """
+
+
+            # Get the main tweet (should be the last one in the chain)
+            main_tweet = reply_chain[-1] if reply_chain else None
+            
+            # Construct response
+            response = {
+                'tweet': main_tweet,
+                'context': {
+                    'reply_chain': reply_chain,
+                    'n_replies': len(reply_chain),
+                    'formatted_reply_chain': formatted_reply_chain
+                }
+            }
+            
+            return response
+            
+        except Exception as e:
+            print(f"Error fetching tweet {tweet_id}: {str(e)}")
+            raise

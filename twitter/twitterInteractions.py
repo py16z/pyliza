@@ -8,7 +8,7 @@ from datetime import timezone
 from config import getTweetResponsePrompt, TESTMODE
 
 class TwitterInteractionHandler:
-    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, fetchContext=None, updateUserContext=None):
+    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, fetchContext=None, updateUserContext=None, ignore_users=[], topics=None):
         self.client = twitter_client
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
@@ -20,6 +20,9 @@ class TwitterInteractionHandler:
         self.getUserContext = getUserContext
         self.updateUserContext = updateUserContext
         self.fetchContext = fetchContext
+        self.ignore_users = ignore_users
+        self.topics = topics
+    
     def load_last_checked_tweet_id(self) -> Optional[int]:
         """Load the ID of the last checked tweet from file"""
         try:
@@ -95,7 +98,7 @@ class TwitterInteractionHandler:
             """
         return self.response_generator(tweet_text, additionalContext=additionalContext)
 
-    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 1, minLength : int = 30):
+    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 1, minLength : int = 50):
         """Check for new mentions and respond to them"""
         print(f"Checking mentions for {searchTerm}")
         nResponses = 0
@@ -115,6 +118,21 @@ class TwitterInteractionHandler:
             
             for tweet in tweets:
                 tweet_id = tweet['id']
+
+                tweet_data = self.client.get_tweet_updated(tweet_id)
+
+                # check if tweet is a reply & print tweet_data reply
+                if tweet_data['context']['n_replies'] > 2:
+                    reply_chain = tweet_data['context']['formatted_reply_chain']
+                else : 
+                    reply_chain = ""
+
+                #print(f"Reply chain: {reply_chain}")
+
+            
+                if tweet['username'] in self.ignore_users:
+                    print(f"Skipping tweet {tweet_id} because it is from an ignored user")
+                    continue
 
                 if len(tweet['text']) < minLength:
                     print(f"Skipping tweet {tweet_id} because it is too short")
@@ -136,7 +154,7 @@ class TwitterInteractionHandler:
                 # Skip if we've already responded to this tweet
                 if self.has_responded_to_tweet(tweet_id):
                     print(f"Already responded to tweet {tweet_id}")
-                    nResponses += 1
+                    #nResponses += 1
                     continue
                 
 
@@ -144,7 +162,7 @@ class TwitterInteractionHandler:
                 print(f"Processing tweet {tweet_id} from @{tweet['username']}")
                 tweetContent = tweet['text']
                 print("TWEET CONTENT: ", tweetContent)
-                tweetPrompt = getTweetResponsePrompt(tweetContent, tweet['username'], searchContext=searchContext)
+                tweetPrompt = getTweetResponsePrompt(tweetContent, tweet['username'], searchContext=searchContext, reply_chain=reply_chain)
                 if self.getUserContext : 
                     userContext = self.getUserContext(self.chroma_client, tweet['username'])
                     respondContext = additionalContext + userContext
@@ -196,7 +214,7 @@ class TwitterInteractionHandler:
         
         try:
             for searchTerm in self.search_terms:
-                self.check_mentions(searchTerm, additionalContext=additionalContext)
+                self.check_mentions(searchTerm, additionalContext=additionalContext, maxReplies=10, minLength=20)
 
             print("Finished mention monitoring loop")
 
@@ -300,7 +318,25 @@ class TwitterInteractionHandler:
             reply_target = random.choice(self.reply_targets)
             reply_search = f"from:{reply_target['searchTerm']}"
             searchContext = reply_target["searchContext"]
-            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext)
+            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext, maxReplies=4)
+
+        except Exception as e:
+            print(f"Error in mention monitoring loop: {str(e)}")
+
+    def reply_topics(self, check_interval: int = 120, additionalContext: str = ""):
+        print("Starting monitoring reply guy targets...")
+        
+        try:
+            # Check if reply_targets is not empty
+            if not self.topics:
+                print("No topics available.")
+                return
+            
+            # randomly select a reply target
+            topic = random.choice(self.topics)
+            reply_search = f"{topic['searchTerm']}"
+            searchContext = topic["searchContext"]
+            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext, maxReplies=2)
 
         except Exception as e:
             print(f"Error in mention monitoring loop: {str(e)}")

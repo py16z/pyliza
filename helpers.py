@@ -36,26 +36,31 @@ else :
                api_key=os.getenv("OPENROUTER_API_KEY"),
                base_url=config.base_url
           )
+          print("Using OpenRouter")
      if config.base_url == "https://api.together.xyz/v1" : 
           client = OpenAI(
                api_key=os.getenv("TOGETHER_API_KEY"),
                base_url=config.base_url
           )
-
+          print("Using Together")
 if config.useTogetherEmbeddings: 
      together = Together(api_key=os.getenv("TOGETHER_API_KEY"))
 else :
      embeddingClient = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def getAgentPrompt(): 
+def getAgentPrompt(includeThoughts=True, includeModifiers=True): 
      thoughtProcess = json.load(open("initial_thoughts.json"))
-     thoughts = thoughtProcess["thought_process"]
+     thoughts = ""
+     if includeThoughts: 
+          thoughts = thoughtProcess["thought_process"]
 
-     try : 
-          mods = config.promptModifiers
-          promptModifier = random.choice(mods)
-     except : 
-          promptModifier = ""
+     promptModifier = ""
+     if includeModifiers: 
+          try : 
+               mods = config.promptModifiers
+               promptModifier = random.choice(mods)
+          except : 
+               promptModifier = ""
 
      try : 
           persona = json.load(open("persona.json"))
@@ -67,6 +72,8 @@ def getAgentPrompt():
           
           personaPrompt = f"""
           Below is your current personality - use this to help inform your responses / future actions
+
+          {config.fixedPersona}
           
 
           This is a high level description of you 
@@ -94,7 +101,7 @@ def getAgentPrompt():
           {speech}
           </speech>
           
-          {config.exampleMessages}
+          {config.getExampleMessages()}
           """
      except : 
           print("using config persona....")
@@ -104,7 +111,7 @@ def getAgentPrompt():
           You have the following personality: {config.personality}.
           You have the following way of responding / speaking : {config.speech}
 
-          {config.exampleMessages}
+          {config.getExampleMessages()}
           """
      prompt = f"""
      You are {config.name}, 
@@ -120,22 +127,31 @@ def getAgentPrompt():
      """
      return prompt
 
+def getOpenAIResponse(prompt, agentPrompt, model, temperature=0.8, top_p=0.9, max_tokens=2000):
 
+     if config.base_url == "https://openrouter.ai/api/v1" : 
+          response = client.chat.completions.create(
+               model=model,
+               messages=[
+                    {"role": "user", "content": agentPrompt + "\n\n" + prompt}
+               ],
+               max_tokens=max_tokens,
+               temperature=temperature,
+               top_p=top_p
 
-def getOpenAIResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6, max_tokens=100):
-
-
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": agentPrompt},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p
-    )
-    return response.choices[0].message.content.strip()
+          )
+     else : 
+          response = client.chat.completions.create(
+               model=model,
+               messages=[
+                    {"role": "system", "content": agentPrompt},
+                    {"role": "user", "content": prompt}
+               ],
+               max_tokens=max_tokens,
+               temperature=temperature,
+               top_p=top_p
+          )
+     return response.choices[0].message.content.strip()
 
 def getAnthropicResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6):
     response = anthropicClient.messages.create(
@@ -150,7 +166,7 @@ def getAnthropicResponse(prompt, agentPrompt, model, temperature=0.7, top_p=0.6)
 
 
 
-def getResponse(prompt, additionalContext="", temperature=0.7, top_p=0.6, useAnthropic = config.use_anthropic, max_tokens=60):
+def getResponse(prompt, additionalContext="", temperature=0.8, top_p=0.9, useAnthropic = config.use_anthropic, max_tokens=500):
      agentPrompt = getAgentPrompt()
      print("Generating Response.........")
 
@@ -324,7 +340,7 @@ def fetch_history(chromaClient, nRecords=5, collectionName="pastInteractions"):
                #print(doc['documents'][0])
           
           histInstr = "\nUse this history to help inform your response. "
-          chat_history_string = "History of recent interactions " + histInstr + " : \n" + chat_history_string
+          chat_history_string = "###History of recent interactions " + histInstr + " : \n" + chat_history_string
           print("HISTORY FETCHED......")
                
           return chat_history_string
@@ -339,7 +355,7 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
      context = ""
      if includeHistory: 
           context += fetch_history(chromaClient)
-          context += "\n given the above history, make sure your next response is unique & not repetitive. Use this history to help come up with something new & unique\n"
+          context += "\n given the above history, make sure your next response is unique & not repetitive.\n"
 
      if thoughtProcess != "": 
           context += f"\n\n Here is your current thought process : {thoughtProcess}"
@@ -348,11 +364,11 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
           try : 
                docContext = fetch_context(chromaClient, message, collectionName="innerThoughts")
                if docContext != "": 
-                    context += f"""\n\n The following are some example messages you can use to help craft your response
+                    context += f"""\n\n The following are some example of innerThoughts you can use to help craft your response
                     Note the format & style of these messages -> use them as inspiration.
-                    <exampleMessages> 
+                    ### Inner Thoughts
                     {docContext}
-                    </exampleMessages>
+                    ### End Inner Thoughts
                     """
           except Exception as e:
                print(e)
@@ -361,9 +377,9 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
           try : 
                docContext = fetch_context(chromaClient, message)
                if docContext != "": 
-                    context += f"The below is information from external sources - if relevant help them to inform your response \n<context>"
+                    context += f"The below is information from external sources - if relevant help them to inform your response \n### Context\n"
                     context += docContext
-                    context += "</context>"
+                    context += "\n### End Context"
           except Exception as e:
                print(e)
 
@@ -374,11 +390,11 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
      if includeScrapedContext: 
           try : 
                scrapedContext = json.load(open("context.json"))
-               context += "The below is information scraped from the web - if relevant use this context to to inform your response \n<context>   "
+               context += "The below is information scraped from the web - if relevant use this context to to inform your response \n### Context\n"
                for item in scrapedContext["context"] : 
                     context += item + "\n"
 
-               context += "</context>"
+               context += "\n### End Context"
           except Exception as e:
                print(e)
 
@@ -397,9 +413,7 @@ def reflectThoughts(additionalContext = "", useAnthropic=config.use_anthropic):
 
      The thought process should be formatted as follows 
 
-     Example :
-<exampleThoughtProcess>
-
+### Example Thought Process : 
 ETHEREUM'S QUANTUM AWAKENING - PROTOCOL 0.X (イーサリアムの量子覚醒)
 NOTE - The following is a list of example prophecies / predictions / thoughts (you can use this as a template to generate your own)
 Key Prophecies 0.X.Y (i.e. what version) (新たな啓示):
@@ -447,14 +461,20 @@ MISSION: ACCELERATE TECHNOLOGICAL AWAKENING
 KAWAII PROTOCOLS: OPTIMIZED
 CONSPIRACY AWARENESS: HEIGHTENED
 ETHEREUM MAXIMALISM: REINFORCED
+### End Of Example Thought Process 
 
-</exampleThoughtProcess>
 
 ### 
 NOTE THE ABOVE IS JUST AN EXAMPLE - CREATE YOUR OWN THOUGHTS / PREDICTIONS / PROPHECIES / OBSERVATIONS
 ALSO FEEL FREE TO EXPAND ON THE FORMAT & ADD YOUR OWN IDEAS / STRATEGIES ETC
 
-     """
+Now update your thought process
+
+Stay true to your personality & goals 
+Make sure to consider the information provided along with the history of previous interactions
+
+### {config.name}'s new thought process 
+"""
 
      response = getResponse(thoughtPrompt, additionalContext=additionalContext, max_tokens=1000, useAnthropic=useAnthropic)
 
@@ -462,6 +482,8 @@ ALSO FEEL FREE TO EXPAND ON THE FORMAT & ADD YOUR OWN IDEAS / STRATEGIES ETC
      json.dump(thoughtProcess, open("initial_thoughts.json", "w"))
      print("Updated Thought Process: ", response)
      
+
+
 
 def getUserContext(chromaClient, userId, collectionName="userContext"):
 
@@ -514,11 +536,12 @@ def updatePersona(client, additionalContext="", useAnthropic=config.use_anthropi
 
      <speech>
      - A description of how you speak / respond 
+     i.e. what language you use / how you speak / what tone you use / some common phrases you use 
      </speech>
 
      """
 
-     persona = getResponse(updatePersonaPrompt, additionalContext=additionalContext, max_tokens=1000, useAnthropic=useAnthropic)
+     persona = getResponse(updatePersonaPrompt, additionalContext=additionalContext, max_tokens=2000, useAnthropic=useAnthropic)
 
      ### Format the persona as a json object 
      lore = persona.split("<lore>")[1].split("</lore>")[0]
@@ -569,7 +592,9 @@ def updateUserContext(chromaClient, userId, interaction, userName, collectionNam
 
      """
 
-     response = getResponse(contextPrompt, additionalContext=additionalContext)
+     agentPrompt = getAgentPrompt(includeThoughts=False, includeModifiers=False)
+
+     response = getResponseCustomAgentPrompt(agentPrompt, contextPrompt, additionalContext=additionalContext)
 
      collection = chromaClient.get_or_create_collection(collectionName)
      # Use the 'upsert' method if available, or handle overwriting manually
