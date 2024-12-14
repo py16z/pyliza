@@ -179,7 +179,6 @@ class TwitterInteractionHandler:
                     ### SKIP POSTING TWEET
                 nResponses += 1
                 response = self.client.post_tweet(response_text, tweet_id)
-
                 interaction = f"""
                 You had the following interaction with {tweet['username']} 
                 {tweet['username']} tweeted : {tweetContent}
@@ -202,6 +201,7 @@ class TwitterInteractionHandler:
                 ### Log Response to Chroma DB
                 self.log_response(original_tweet_id=tweet_id, response_tweet_id=responseId, tweet_content=tweetContent, response_text=response_text)
                 # Wait a bit between responses to avoid rate limiting
+                time.sleep(10)
                 if nResponses >= maxReplies:
                     break                
 
@@ -305,7 +305,7 @@ class TwitterInteractionHandler:
         except Exception as e:
             print(f"Error in mention monitoring loop: {str(e)}")
 
-    def reply_guy(self, check_interval: int = 120, additionalContext: str = ""):
+    def reply_guy(self, n_targets: int = 2, check_interval: int = 120, additionalContext: str = ""):
         print("Starting monitoring reply guy targets...")
         
         try:
@@ -315,10 +315,16 @@ class TwitterInteractionHandler:
                 return
             
             # randomly select a reply target
-            reply_target = random.choice(self.reply_targets)
-            reply_search = f"from:{reply_target['searchTerm']}"
-            searchContext = reply_target["searchContext"]
-            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext, maxReplies=4)
+            
+            reply_targets = random.sample(self.reply_targets, n_targets)
+            for reply_target in reply_targets:
+                reply_search = f"from:{reply_target['searchTerm']}"
+                searchContext = reply_target["searchContext"]
+                self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext, maxReplies=2)
+
+                print(f"Finished reply guy loop for {reply_target['searchTerm']}")
+                time.sleep(10)
+
 
         except Exception as e:
             print(f"Error in mention monitoring loop: {str(e)}")

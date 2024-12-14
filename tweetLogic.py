@@ -25,24 +25,37 @@ chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 def runTweetLoop(): 
 
     if not config.TESTMODE:
-        logs = monitorChain()
-        processLogs(logs)
-
+        try : 
+            # NOTE : Need to have logic set up for monitoring events + mapping to functions
+            logs = monitorChain()
+            processLogs(logs)
+        except Exception as e:
+            print(f"Error: {e}")
         if checkQueuedTweets():
             processQueuedTweets()
         else:
             ponderThoughts()
     
+    search_tweets()
     r = random.randint(0, 100)
-    if r < 25 : 
-        search_tweets()
-    elif r <75 : 
+
+    if r < 10 : 
+        #reply_topics()
+        pass
+    elif r < 30 : 
         reply_to_followers()
     else:
         reply_guy()
 
     print("Finished tweet loop")
 
+def reply_topics():
+    print("Replying to topics...")
+    try:
+        client, interaction_handler = initTwitterClients(chromaClient)
+        interaction_handler.reply_topics()
+    except Exception as e:
+        print(f"Error: {e}")
 
 def checkQueuedTweets():
     try : 
@@ -105,9 +118,10 @@ def initTwitterClients(chroma):
         getUserContext=getUserContext,
         updateUserContext=updateUserContext,
         fetchContext=fetch_context,
-        reply_targets=config.reply_targets,
-        search_terms=config.search_terms
-
+        reply_targets=config.getReplyGuyTargets(),
+        topics=config.getTopics(),
+        search_terms=config.search_terms,
+        ignore_users=config.ignore_users,
     )
 
     return client, interaction_handler
@@ -142,7 +156,7 @@ def ponderThoughts():
 
     print("Pondering thoughts...")
     try:
-        history = fetch_history(chromaClient, nRecords=10)
+        history = fetch_history(chromaClient, nRecords=5)
         
         reflectThoughts(additionalContext=history)
         client, interaction_handler = initTwitterClients(chromaClient)
@@ -164,8 +178,8 @@ def ponderThoughts():
         with open("last_tweet.json", "w") as f:
             json.dump(last_tweet, f, indent=4)
 
-        context = prepareContext(thoughts, chromaClient, thoughtProcess=thoughts)
-        updatePersona(chromaClient, additionalContext=context)
+        #context = prepareContext(thoughts, chromaClient, thoughtProcess=thoughts)
+        #updatePersona(chromaClient, additionalContext=context)
 
     except Exception as e:
         print(f"Error: {e}")
