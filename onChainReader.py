@@ -6,7 +6,7 @@ startingBlock = 105062472
 def monitorChain():
     print("Monitoring chain.....")
     try : 
-        startBlock = json.load(open("startBlock.json"))
+        startBlock = json.load(open("data/startBlock.json"))
         startBlock = startBlock["block"]
     except : 
         startBlock = startingBlock
@@ -16,7 +16,7 @@ def monitorChain():
     print(type(logs))
 
 
-    json.dump({"block" : current_block}, open("startBlock.json", "w"))
+    json.dump({"block" : current_block}, open("data/startBlock.json", "w"))
 
     return logs
 
@@ -38,15 +38,15 @@ def processLogs(logs):
 
 def takeAction(action, context):
 
-    persona = json.load(open("persona.json"))
+    persona = json.load(open("data/persona.json"))
 
     if action == "Tweet":
         try : 
-            queuedTweets = json.load(open("queuedTweets.json"))
+            queuedTweets = json.load(open("data/queuedTweets.json"))
             queuedTweets["tweets"].append(context)
-            json.dump(queuedTweets, open("queuedTweets.json", "w"))
+            json.dump(queuedTweets, open("data/queuedTweets.json", "w"))
         except : 
-            json.dump({"tweets" : [context]}, open("queuedTweets.json", "w"))
+            json.dump({"tweets" : [context]}, open("data/queuedTweets.json", "w"))
         ### TO DO -> add tweet instructions to schedule 
         pass
 

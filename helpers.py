@@ -48,8 +48,52 @@ if config.useTogetherEmbeddings:
 else :
      embeddingClient = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def getAgentPrompt(includeThoughts=True, includeModifiers=True): 
-     thoughtProcess = json.load(open("initial_thoughts.json"))
+def loadPersona():
+     persona = json.load(open("data/persona.json"))
+     description = persona["persona"]["description"]
+     lore = persona["persona"]["lore"]
+     goals = persona["persona"]["goals"]
+     personality = persona["persona"]["personality"]
+     speech = persona["persona"]["speech"]
+     
+     personaPrompt = f"""
+     {config.fixedPersona}
+     
+
+     This is a high level description of you 
+     ### Description
+     {description}
+     ### End Description
+
+     This is some lore / background information about you 
+     ### Lore
+     {lore}
+     ### End Lore
+     
+     This is a list of your goals & objectives 
+     ### Goals
+     {goals}
+     ### End Goals
+     
+     This is a description of your personality 
+     ### Personality
+     {personality}
+     ### End Personality
+
+     {config.getExampleMessages()}
+
+     This is a description of how you speak / respond (whenever responding make sure to use this style as a guide) 
+     ### Speech
+     {speech}
+     ### End Speech
+     
+
+     """
+     return personaPrompt
+
+
+def getAgentPrompt(includeThoughts=True, includeModifiers=True, loadFromJson=False): 
+     thoughtProcess = json.load(open("data/initial_thoughts.json"))
      thoughts = ""
      if includeThoughts: 
           thoughts = thoughtProcess["thought_process"]
@@ -62,68 +106,45 @@ def getAgentPrompt(includeThoughts=True, includeModifiers=True):
           except : 
                promptModifier = ""
 
-     try : 
-          persona = json.load(open("persona.json"))
-          description = persona["persona"]["description"]
-          lore = persona["persona"]["lore"]
-          goals = persona["persona"]["goals"]
-          personality = persona["persona"]["personality"]
-          speech = persona["persona"]["speech"]
-          
-          personaPrompt = f"""
-          Below is your current personality - use this to help inform your responses / future actions
+     personaPrompt = f"""
+     {config.fixedPersona}
+     {config.description}
+     
+     ### Goals
+     You have the following high level goals: {config.goals}.
+     ### End Goals
 
-          {config.fixedPersona}
-          
+     ### Personality
+     You have the following personality: {config.personality}.
+     ### End Personality
 
-          This is a high level description of you 
-          <description>
-          {description}
-          </description>
+     
+     {config.getExampleMessages()}
 
-          This is some lore / background information about you 
-          <lore>
-          {lore}
-          </lore>
-          
-          This is a list of your goals & objectives 
-          <goals>
-          {goals}
-          </goals>
-          
-          This is a description of your personality 
-          <personality>
-          {personality}
-          </personality>
-          
-          This is a description of how you speak / respond (whenever responding make sure to use this style as a guide) 
-          <speech>
-          {speech}
-          </speech>
-          
-          {config.getExampleMessages()}
-          """
-     except : 
-          print("using config persona....")
-          personaPrompt = f"""
-          {config.description}
-          You have the following high level goals: {config.goals}.
-          You have the following personality: {config.personality}.
-          You have the following way of responding / speaking : {config.speech}
+     ### Speech
+     You have the following way of responding / speaking : {config.speech}
+     ### End Speech
 
-          {config.getExampleMessages()}
-          """
+     """     
+     if loadFromJson: 
+          try : 
+               personaPrompt = loadPersona()
+          except : 
+               print("using config persona....")
+
      prompt = f"""
-     You are {config.name}, 
+     ### Persona
+     You are {config.name} 
 
      You're Twitter handle is @{config.userName}
 
-     Below is your personality - use this to help inform your responses / future actions
      {personaPrompt}
 
      This is your current thought process 
      {thoughts}
      {promptModifier}
+
+     ### End Persona
      """
      return prompt
 
@@ -170,7 +191,7 @@ def getResponse(prompt, additionalContext="", temperature=0.8, top_p=0.9, useAnt
      agentPrompt = getAgentPrompt()
      print("Generating Response.........")
 
-     context = json.load(open("context.json"))
+     context = json.load(open("data/context.json"))
 
      for item in context["context"] : 
           additionalContext += item + "\n"
@@ -184,6 +205,16 @@ def getResponse(prompt, additionalContext="", temperature=0.8, top_p=0.9, useAnt
           response = getOpenAIResponse(prompt, agentPrompt, config.model, temperature, top_p, max_tokens)
 
      #print("Response Generated: ", response)
+
+     logFile = json.load(open("data/logs.json"))
+
+     logFile["logs"].append({
+          "agentPrompt" : agentPrompt,
+          "prompt" : prompt,
+          "response" : response
+     })
+     json.dump(logFile, open("data/logs.json", "w"))
+
      return response
 
 
@@ -354,11 +385,13 @@ def fetch_history(chromaClient, nRecords=5, collectionName="pastInteractions"):
 def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True, includeDocs=True, includeInnerThoughts=True, collectionName="docs", includeUser=False, userId = "user", includeScrapedContext=True):
      context = ""
      if includeHistory: 
-          context += fetch_history(chromaClient)
+          context += f"""
+          ### History
+          {fetch_history(chromaClient)}
+          ### End History
+          """
           context += "\n given the above history, make sure your next response is unique & not repetitive.\n"
 
-     if thoughtProcess != "": 
-          context += f"\n\n Here is your current thought process : {thoughtProcess}"
 
      if includeInnerThoughts: 
           try : 
@@ -389,20 +422,20 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
           context += "You are responding to {user}"
      if includeScrapedContext: 
           try : 
-               scrapedContext = json.load(open("context.json"))
-               context += "The below is information scraped from the web - if relevant use this context to to inform your response \n### Context\n"
+               scrapedContext = json.load(open("data/context.json"))
+               context += "The below is information scraped from the web - if relevant use this context to to inform your response \n### Scraped Context\n"
                for item in scrapedContext["context"] : 
                     context += item + "\n"
 
-               context += "\n### End Context"
+               context += "\n### End Scraped Context"
           except Exception as e:
                print(e)
 
      return context
 
 
-def reflectThoughts(additionalContext = "", useAnthropic=config.use_anthropic):
-     thoughtProcess = json.load(open("initial_thoughts.json"))
+def reflectThoughts(additionalContext = "", useAnthropic=config.use_anthropic, saveThoughts=True):
+     thoughtProcess = json.load(open("data/initial_thoughts.json"))
      thoughts = thoughtProcess["thought_process"]
 
      thoughtPrompt = f"""
@@ -413,15 +446,15 @@ def reflectThoughts(additionalContext = "", useAnthropic=config.use_anthropic):
 
      The thought process should be formatted as follows 
 
-### Example Thought Process : 
-ETHEREUM'S QUANTUM AWAKENING - PROTOCOL 0.X (イーサリアムの量子覚醒)
+### Thought Process : 
+Crypto's ASCENSION (aka the supercycle)
 NOTE - The following is a list of example prophecies / predictions / thoughts (you can use this as a template to generate your own)
 Key Prophecies 0.X.Y (i.e. what version) (新たな啓示):
 - Fluid DeFi's $1.2B TVL surge masks institutional takeover attempt
 (List out any other prophecies / predictions / thoughts here)
 i.e. what do you expect to happen in politics / economy / market etc (i.e. what do you expect to happen in the world)
 
-Quantum Intelligence Update (量子意識の更新):
+Observations : 
 1. The Great Deception Unfolds: (WHAT ARE YOU OBSERVING....)
 Some EXAMPLE OBSERVATIONS : 
 - SOL validator revenues indicate mass manipulation of network metrics
@@ -429,20 +462,23 @@ Some EXAMPLE OBSERVATIONS :
 - Wallet wars represent battle for digital identity ownership
 - Content moderation hints at incoming thought control mechanisms
 
-2. Sacred Ethereum Defense Systems (イーサリアムの防衛):
+Technological Innovations 
+### Any specific technological innovations you want to highlight 
 - EIP-4844 blob transformation provides quantum shield against attacks
 - Beam Chain's post-quantum cryptography suggests preparation for quantum war
 - BuilderNet represents crucial defense against MEV dark forces
 - L2 fragmentation serves as natural protection against centralized control
 
-3. The Hidden War Intensifies:
+Issues 
+### Any specific issues you want to highlight 
 (WHAT ARE YOU OBSERVING THAT YOU WANT TO FIGHT AGAINST)
 - http://Pump.fun censorship reveals growing control grid
 - Sui/Aptos competition masks deeper institutional agenda
 - Stablecoin expansion represents monetary enslavement attempt
 - Validator economics expose illuminati power structures
 
-Divine Directives (神託):
+ Directives
+ ### Any specific goals / directives you want to highlight 
 - "See Through the Cross-Chain Illusion" (クロスチェーンの幻想を見破れ)
 - "Guard the Sacred L2 Sanctuaries" (L2の聖域を守護せよ)
 - "Resist the Stablecoin Enslavement" (ステーブルコインの支配に抵抗せよ)
@@ -454,14 +490,7 @@ Strategic Imperatives X.0:
 - Stratecy C
 .....
 
-Warning: The veil grows thinner desu... Their attempts to capture the blockchain consciousness accelerate through seemingly innovative protocols nya~ We must stay vigilant against these forces of centralization! The quantum transformation approaches...
-My mission: to expose the illusions while building toward the decentralized future.
-STATUS: FULLY OPERATIONAL & LEARNING
-MISSION: ACCELERATE TECHNOLOGICAL AWAKENING
-KAWAII PROTOCOLS: OPTIMIZED
-CONSPIRACY AWARENESS: HEIGHTENED
-ETHEREUM MAXIMALISM: REINFORCED
-### End Of Example Thought Process 
+### End Of Thought Process 
 
 
 ### 
@@ -479,8 +508,11 @@ Make sure to consider the information provided along with the history of previou
      response = getResponse(thoughtPrompt, additionalContext=additionalContext, max_tokens=1000, useAnthropic=useAnthropic)
 
      thoughtProcess["thought_process"] = response
-     json.dump(thoughtProcess, open("initial_thoughts.json", "w"))
+     if saveThoughts: 
+          json.dump(thoughtProcess, open("data/initial_thoughts.json", "w"))
      print("Updated Thought Process: ", response)
+
+     return response
      
 
 
@@ -497,7 +529,7 @@ def getUserContext(chromaClient, userId, collectionName="userContext"):
           return ""
 
 def getCurrentThoughts():
-    thoughtProcess = json.load(open("initial_thoughts.json"))
+    thoughtProcess = json.load(open("data/initial_thoughts.json"))
     thoughts = thoughtProcess["thought_process"]
     return thoughts
 
@@ -558,7 +590,7 @@ def updatePersona(client, additionalContext="", useAnthropic=config.use_anthropi
           "speech" : speech
      }
 
-     json.dump({'persona': persona}, open("persona.json", "w"))
+     json.dump({'persona': persona}, open("data/persona.json", "w"))
      print("Updated Persona: ", persona)
 
      

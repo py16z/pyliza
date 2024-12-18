@@ -15,7 +15,7 @@ def updateContext(ChromaClient, links=config.links, thoughtProcess="", randomLin
         links = random.sample(links, 1)
 
     try : 
-        existingContext = open("context.json", "r").read()
+        existingContext = open("data/context.json", "r").read()
         additionalContext = json.loads(existingContext)["context"][0]
     except : 
         additionalContext = ""
@@ -35,7 +35,8 @@ def updateContext(ChromaClient, links=config.links, thoughtProcess="", randomLin
             print(e)
 
     ### save context to file
-    with open("context.json", "w") as f:
+    with open("data/context.json", "w") as f:
         # indent = 4 for pretty printing
         json.dump({"context" : context}, f, indent=4)
+
 

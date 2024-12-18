@@ -551,52 +551,121 @@ class TwitterClient:
         """
         Send a long text as a thread of tweets with fixed feature flags
         """
-        # Split text into chunks
-        def split_into_tweets(text: str, max_length: int = 280) -> List[str]:
-            # Split text by newlines first
-            initial_chunks = text.split('\n')
-            final_chunks = []
-
-            for chunk in initial_chunks:
-                words = chunk.split()
-                current_chunk = []
-                current_length = 0
-
-                for word in words:
-                    word_length = len(word) + (1 if current_length > 0 else 0)
-
-                    if current_length + word_length + len("\n...cont") <= max_length:
-                        if current_length > 0:
-                            current_chunk.append(" ")
-                        current_chunk.append(word)
-                        current_length += word_length
-                    else:
-                        # Add\n ...cont to the current chunk and append to final_chunks
-                        final_chunks.append("".join(current_chunk) + "\n...cont")
-                        current_chunk = [word]
-                        current_length = len(word)
-
-                # Add the last chunk without\n ...cont if it's not empty
-                if current_chunk:
-                    final_chunks.append("".join(current_chunk))
-
-            # Remove\n ...cont from the last chunk if it was added
-            if final_chunks and final_chunks[-1].endswith("\n...cont"):
-                final_chunks[-1] = final_chunks[-1][:-len("\n...cont")]
-
-            # Reconcile small chunks
-            reconciled_chunks = []
-            for i in range(len(final_chunks)):
-                if i > 0 and len(final_chunks[i]) < 50:  # Arbitrary small chunk threshold
-                    # Try to merge with the previous chunk if it fits
-                    if len(reconciled_chunks[-1]) + len(final_chunks[i]) + len("\n...cont") <= max_length:
-                        reconciled_chunks[-1] = reconciled_chunks[-1] + " " + final_chunks[i]
-                    else:
-                        reconciled_chunks.append(final_chunks[i])
+        def split_into_tweets(text: str, max_length: int = 270) -> List[str]:
+            """
+            Split text into tweets by first breaking into sentences, then combining them into tweets
+            that don't exceed max_length.
+            """
+            # Reduce max_length to account for potential "...cont" suffix
+            effective_max_length = max_length - 8  # Leave room for "...cont" suffix
+            
+            # Split into sentences (handling ., ?, and ! endings)
+            sentences = []
+            current_sentence = []
+            
+            # First split by newlines to preserve paragraph structure
+            paragraphs = text.split('\n')
+            
+            for paragraph in paragraphs:
+                # Skip empty paragraphs
+                if not paragraph.strip():
+                    continue
+                    
+                # Split each paragraph into potential sentences
+                raw_sentences = []
+                current = []
+                
+                for char in paragraph:
+                    current.append(char)
+                    if char in '.!?':
+                        # Check if this is really the end (e.g., not "Mr." or "U.S.")
+                        sentence = ''.join(current).strip()
+                        if not any(abbrev in sentence[-4:] for abbrev in [
+                            'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Jr.', 'Sr.', 'U.S.',
+                            'i.e.', 'e.g.', 'etc.', 'vs.'
+                        ]):
+                            raw_sentences.append(''.join(current).strip())
+                            current = []
+                
+                # Add any remaining text as a sentence
+                if current:
+                    raw_sentences.append(''.join(current).strip())
+                    
+                sentences.extend(raw_sentences)
+            
+            # Now combine sentences into tweets
+            tweets = []
+            current_tweet = []
+            current_length = 0
+            
+            for sentence in sentences:
+                # Skip empty sentences
+                if not sentence.strip():
+                    continue
+                    
+                sentence_length = len(sentence.strip())
+                
+                # If this single sentence is longer than effective_max_length, split it by words
+                if sentence_length > effective_max_length:
+                    if current_tweet:  # First save any existing tweet content
+                        tweets.append("\n".join(current_tweet))
+                        current_tweet = []
+                        current_length = 0
+                    
+                    # Split long sentence into words
+                    words = sentence.split()
+                    temp_tweet = []
+                    temp_length = 0
+                    
+                    for word in words:
+                        word_length = len(word) + (1 if temp_length > 0 else 0)  # Add 1 for space
+                        
+                        # Check if adding this word would exceed the limit
+                        if temp_length + word_length <= effective_max_length:
+                            if temp_length > 0:
+                                temp_tweet.append(" ")
+                            temp_tweet.append(word)
+                            temp_length += word_length
+                        else:
+                            # Save current tweet and start new one
+                            if temp_tweet:
+                                tweets.append(''.join(temp_tweet) + "\n...")
+                            temp_tweet = [word]
+                            temp_length = len(word)
+                    
+                    # Add remaining words if any
+                    if temp_tweet:
+                        current_tweet = temp_tweet
+                        current_length = temp_length
+                    continue
+                
+                # For normal sentences, check if adding would exceed limit
+                new_length = current_length + (1 if current_length > 0 else 0) + sentence_length
+                
+                if new_length <= effective_max_length:
+                    if current_length > 0:
+                        current_tweet.append(" ")
+                    current_tweet.append(sentence.strip())
+                    current_length = new_length
                 else:
-                    reconciled_chunks.append(final_chunks[i])
-
-            return reconciled_chunks
+                    # Save current tweet and start new one
+                    if current_tweet:
+                        tweets.append("\n".join(current_tweet) + "\n...")
+                    current_tweet = [sentence.strip()]
+                    current_length = sentence_length
+            
+            # Add the last tweet if there's content
+            if current_tweet:
+                tweets.append(' '.join(current_tweet))
+            
+            # Verify all tweets are within limit
+            for i, tweet in enumerate(tweets):
+                if len(tweet) > max_length:
+                    print(f"Warning: Tweet {i+1} is {len(tweet)} characters (exceeds {max_length})")
+                    # Emergency split if still too long
+                    tweets[i] = tweet[:max_length-8] + "\n..."
+            
+            return tweets
 
         # Update headers
         self._update_headers_with_csrf()

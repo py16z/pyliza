@@ -5,7 +5,7 @@ from helpers import addTxt, addTxtList
 import json
 import config
 
-chroma_db_path = os.path.join(os.getcwd(), "chromadb")
+chroma_db_path = os.path.join(os.getcwd(), "data/chromadb")
 client = chromadb.PersistentClient(path=chroma_db_path)
 
 addDocs = True

@@ -68,16 +68,12 @@ Do this in your <thought process> section
 output = """
 Below is an example of how the output from the above tasks should be formatted
 
-<analysis>
 Analysis in markdown format
-</analysis>
 
-<reflection>
 Notes on the analysis
 i.e. what you learned from the analysis
 i.e. what you would like to research further
 i.e. what you would like to tweet about in the future
-</reflection>
 
 """
 
@@ -109,7 +105,6 @@ import time
 def getContext(results, additionalContext="", useClaude=True, thoughtProcess=""):
     togetherModel = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
     model = "claude-3-5-sonnet-20240620"
-    contextStr = "\n<context> Additionally the following context has been provided from previous analysis conducted - build on this & add to it using the information provided : "
     sysPrompt = PROMPT + thoughtProcess +TASK + EXPECTED_OUTPUT
 
     out = getResponseCustomAgentPrompt(results, sysPrompt, additionalContext=additionalContext, useAnthropic=useClaude)

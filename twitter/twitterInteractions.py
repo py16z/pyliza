@@ -8,13 +8,18 @@ from datetime import timezone
 from config import getTweetResponsePrompt, TESTMODE
 
 class TwitterInteractionHandler:
-    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, fetchContext=None, updateUserContext=None, ignore_users=[], topics=None):
+    def __init__(self, twitter_client, response_generator=None, chroma_client=None, search_terms=[], reply_targets=[], getUserContext=None, fetchContext=None, updateUserContext=None, ignore_users=[], topics=None, init_time=None):
         self.client = twitter_client
         self.response_generator = response_generator or self.default_response
         self.last_checked_tweet_id = self.load_last_checked_tweet_id()
         self.chroma_client = chroma_client
-        # Make start_time timezone-aware
-        self.start_time = datetime.now(timezone.utc) - timedelta(hours=12)
+
+        if init_time:
+            self.start_time = max(init_time, datetime.now(timezone.utc) - timedelta(hours=12))
+        else:
+            # Make start_time timezone-aware
+            self.start_time = datetime.now(timezone.utc) - timedelta(hours=12)
+
         self.search_terms = search_terms
         self.reply_targets = reply_targets
         self.getUserContext = getUserContext
@@ -34,7 +39,7 @@ class TwitterInteractionHandler:
 
     def save_last_checked_tweet_id(self, tweet_id: int):
         """Save the ID of the last checked tweet"""
-        with open('last_checked_tweet.json', 'w') as f:
+        with open('data/last_checked_tweet.json', 'w') as f:
             json.dump({'last_checked_tweet_id': tweet_id}, f)
 
     def log_response(self, original_tweet_id: str, response_tweet_id: str, tweet_content: str, response_text: str):
@@ -162,7 +167,7 @@ class TwitterInteractionHandler:
                 print(f"Processing tweet {tweet_id} from @{tweet['username']}")
                 tweetContent = tweet['text']
                 print("TWEET CONTENT: ", tweetContent)
-                tweetPrompt = getTweetResponsePrompt(tweetContent, tweet['username'], searchContext=searchContext, reply_chain=reply_chain)
+                tweetPrompt = getTweetResponsePrompt(tweetContent, f"@{tweet['username']}", searchContext=searchContext, reply_chain=reply_chain)
                 if self.getUserContext : 
                     userContext = self.getUserContext(self.chroma_client, tweet['username'])
                     respondContext = additionalContext + userContext
@@ -300,12 +305,12 @@ class TwitterInteractionHandler:
 
             reply_search = f"from:@{follower['username']}"
             searchContext = follower["description"]
-            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext)
+            self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext, maxReplies=1)
 
         except Exception as e:
             print(f"Error in mention monitoring loop: {str(e)}")
 
-    def reply_guy(self, n_targets: int = 2, check_interval: int = 120, additionalContext: str = ""):
+    def reply_guy(self, n_targets: int = 1, check_interval: int = 120, additionalContext: str = ""):
         print("Starting monitoring reply guy targets...")
         
         try:
@@ -320,10 +325,10 @@ class TwitterInteractionHandler:
             for reply_target in reply_targets:
                 reply_search = f"from:{reply_target['searchTerm']}"
                 searchContext = reply_target["searchContext"]
-                self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext, maxReplies=2)
+                self.check_mentions(reply_search, additionalContext=additionalContext, searchContext=searchContext, maxReplies=1)
 
                 print(f"Finished reply guy loop for {reply_target['searchTerm']}")
-                time.sleep(10)
+                time.sleep(20)
 
 
         except Exception as e:

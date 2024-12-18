@@ -19,12 +19,15 @@ import json
 import random
 from scrape import updateContext
 
-chroma_db_path = os.path.join(os.getcwd(), "chromadb")
+from search import search
+
+chroma_db_path = os.path.join(os.getcwd(), "data/chromadb")
 chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
 def runTweetLoop(): 
 
     if not config.TESTMODE:
+        ponderThoughts()
         try : 
             # NOTE : Need to have logic set up for monitoring events + mapping to functions
             logs = monitorChain()
@@ -32,17 +35,16 @@ def runTweetLoop():
         except Exception as e:
             print(f"Error: {e}")
         if checkQueuedTweets():
-            processQueuedTweets()
-        else:
-            ponderThoughts()
+            #processQueuedTweets()
+            print("Skipping queued tweets")
     
     search_tweets()
     r = random.randint(0, 100)
-
-    if r < 10 : 
+    
+    if r < 40 : 
         #reply_topics()
         pass
-    elif r < 30 : 
+    elif r < 60 : 
         reply_to_followers()
     else:
         reply_guy()
@@ -59,12 +61,12 @@ def reply_topics():
 
 def checkQueuedTweets():
     try : 
-        queuedTweets = json.load(open("queuedTweets.json"))
+        queuedTweets = json.load(open("data/queuedTweets.json"))
         print("Tweets in queue: ", len(queuedTweets["tweets"]))
 
         ### CHeck time since last tweet
         try : 
-            last_tweet = json.load(open("last_tweet.json"))
+            last_tweet = json.load(open("data/last_tweet.json"))
             last_tweet_time = last_tweet["last_tweet"]
             if time.time() - last_tweet_time < config.postFrequency:
                 print("Not posting tweet, too soon...")
@@ -81,13 +83,13 @@ def checkQueuedTweets():
 def processQueuedTweets():
     try : 
         print("Processing queued tweets...")
-        queuedTweets = json.load(open("queuedTweets.json"))
+        queuedTweets = json.load(open("data/queuedTweets.json"))
         instructions = queuedTweets["tweets"][0]
         print("Posting tweet based on instructions: ", instructions)
-        post_tweet(instructions=instructions)
+        post_tweet(instructions=instructions, useSearch=True)
         
         queuedTweets["tweets"].pop(0)
-        json.dump(queuedTweets, open("queuedTweets.json", "w"))
+        json.dump(queuedTweets, open("data/queuedTweets.json", "w"))
     except Exception as e:
         print(f"Error: {e}")
         return False
@@ -95,7 +97,7 @@ def processQueuedTweets():
 
 def loadLinks():
     try : 
-        links = json.load(open("articles.json"))
+        links = json.load(open("data/articles.json"))
         return links["links"]
     except Exception as e:
         print(f"Error: {e}")
@@ -127,9 +129,41 @@ def initTwitterClients(chroma):
     return client, interaction_handler
 
 
-def ponderThoughts():
+def ponderThoughtsViaSearch():
 
-    last_tweet = json.load(open("last_tweet.json"))
+    message = "Refect on your current thoughts process & decide what are potential future areas of interest to explore / additional information you could search for to "
+    thoughts = getCurrentThoughts()
+    context = prepareContext(thoughts, chromaClient, thoughtProcess=thoughts)
+    query, searchResults = search(chromaClient, message=message, context=context)
+
+    print("Query: ", query)
+    print("Search Results: ", searchResults)
+
+
+    history = fetch_history(chromaClient, nRecords=10)
+
+    additionalContext = f"""
+    Here is a history of your recent interactions 
+    {history}
+
+    Additionally you recently completed the following search 
+    {query}
+
+    The results of the search are as follows 
+    {searchResults}
+    """
+
+
+    updatedThoughts = reflectThoughts(additionalContext=additionalContext, saveThoughts=False)
+
+    print("Updated Thoughts: ", updatedThoughts)
+
+    return updatedThoughts
+
+
+def ponderThoughts(postTweet = True):
+
+    last_tweet = json.load(open("data/last_tweet.json"))
     last_tweet_time = last_tweet["last_tweet"]
 
     print("Time since last tweet: ", time.time() - last_tweet_time)
@@ -141,7 +175,6 @@ def ponderThoughts():
     thoughts = getCurrentThoughts()
     links = loadLinks()
 
-    ### SKIP THIS AS FIRECRAWL BUGGING OUT 
     if (len(links) > 0):
         i = random.randint(0, len(links) - 1)
         link = links[i]
@@ -163,20 +196,21 @@ def ponderThoughts():
         log_message(chromaClient, thoughts, "user", collectionName="Thoughts")
         print("Posting thoughts.....")
         tweet = getResponse(config.getPostPrompt(), additionalContext=thoughts)
-        #print("Tweet: ", tweet)
-        client.post_tweet(tweet)
-        #client.post_tweet(getCurrentThoughts())
-        last_tweet["last_tweet"] = time.time()
-        message = f"""
-        You tweeted : {tweet}
-        """
-        log_message(chromaClient, message)
+        print("Tweet: ", tweet)
+        if postTweet:
+            client.post_tweet(tweet)
+            #client.post_tweet(getCurrentThoughts())
+            last_tweet["last_tweet"] = time.time()
+            message = f"""
+            You tweeted : {tweet}
+            """
+            log_message(chromaClient, message)
 
-        with open("articles.json", "w") as f:
-            json.dump({"links": links}, f, indent=4)
+            with open("data/articles.json", "w") as f:
+                json.dump({"links": links}, f, indent=4)
 
-        with open("last_tweet.json", "w") as f:
-            json.dump(last_tweet, f, indent=4)
+            with open("data/last_tweet.json", "w") as f:
+                json.dump(last_tweet, f, indent=4)
 
         #context = prepareContext(thoughts, chromaClient, thoughtProcess=thoughts)
         #updatePersona(chromaClient, additionalContext=context)
@@ -185,9 +219,9 @@ def ponderThoughts():
         print(f"Error: {e}")
 
 
-def post_tweet(instructions=""):
+def post_tweet(instructions="", useSearch=False):
     
-    last_tweet = json.load(open("last_tweet.json"))
+    last_tweet = json.load(open("data/last_tweet.json"))
     last_tweet_time = last_tweet["last_tweet"]
 
     if time.time() - last_tweet_time < config.postFrequency:
@@ -196,6 +230,17 @@ def post_tweet(instructions=""):
     
     print("Posting tweet...")
     context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
+
+    if useSearch : 
+        query, searchResults = search(chromaClient, message=instructions, context=context)
+        searchContext = f"""
+        Note to help you with your next response you complete the following search 
+        {query}
+
+        The results of the search are as follows 
+        {searchResults}
+        """
+        context = context + searchContext
 
     try :
         tweet = getResponse(config.getPostPrompt(instructions=instructions), additionalContext=context)
