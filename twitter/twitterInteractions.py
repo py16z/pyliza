@@ -15,10 +15,10 @@ class TwitterInteractionHandler:
         self.chroma_client = chroma_client
 
         if init_time:
-            self.start_time = max(init_time, datetime.now(timezone.utc) - timedelta(hours=12))
+            self.start_time = max(init_time, datetime.now(timezone.utc) - timedelta(hours=3))
         else:
             # Make start_time timezone-aware
-            self.start_time = datetime.now(timezone.utc) - timedelta(hours=12)
+            self.start_time = datetime.now(timezone.utc) - timedelta(hours=3)
 
         self.search_terms = search_terms
         self.reply_targets = reply_targets
@@ -103,13 +103,13 @@ class TwitterInteractionHandler:
             """
         return self.response_generator(tweet_text, additionalContext=additionalContext)
 
-    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 1, minLength : int = 50):
+    def check_mentions(self, searchTerm : str, additionalContext: str = "", searchContext: str = "", maxReplies : int = 1, minLength : int = 50, hoursAdjustment : int = 0):
         """Check for new mentions and respond to them"""
         print(f"Checking mentions for {searchTerm}")
         nResponses = 0
         
         try:
-            search_response = self.client.search_tweets(searchTerm, max_tweets=20)
+            search_response = self.client.search_tweets(searchTerm, max_tweets=5)
             #print(f"Raw search response: {json.dumps(search_response, indent=2)}")
             if not search_response:
                 print("No new mentions found")
@@ -144,7 +144,7 @@ class TwitterInteractionHandler:
                     continue
                 
                 tweet_created_at = datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S %z %Y')
-                if tweet_created_at < self.start_time:
+                if tweet_created_at < self.start_time + timedelta(hours=hoursAdjustment):
                     print(f"Skipping tweet {tweet_id} because it was created before the interaction handler was initialized")
                     continue
 
@@ -219,7 +219,7 @@ class TwitterInteractionHandler:
         
         try:
             for searchTerm in self.search_terms:
-                self.check_mentions(searchTerm, additionalContext=additionalContext, maxReplies=10, minLength=20)
+                self.check_mentions(searchTerm, additionalContext=additionalContext, maxReplies=10, minLength=20, hoursAdjustment=1)
 
             print("Finished mention monitoring loop")
 

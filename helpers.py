@@ -4,6 +4,10 @@ from anthropic import Anthropic
 from together import Together
 from typing import List
 
+from chromadb.config import Settings
+import chromadb
+ 
+
 import time
 
 import config
@@ -18,8 +22,32 @@ import json
 
 import logging
 
+import re  # Add this import at the top
+
 # Set the logging level for the specific logger to suppress warnings
 logging.getLogger('chromadb.segment.impl.vector.local_persistent_hnsw').setLevel(logging.ERROR)
+
+
+def getChromaClient():
+    if config.useLocalChroma : 
+          chroma_db_path = os.path.join(os.getcwd(), "data/chromadb")
+          chromaClient = chromadb.PersistentClient(path=chroma_db_path)
+          return chromaClient
+    else : 
+          user = os.getenv("CHROMA_USER")
+          password = os.getenv("CHROMA_PASSWORD")
+
+          chromaClient = chromadb.HttpClient(
+               host=os.getenv("CHROMA_HOST"),
+               port=8000,
+               settings=Settings(
+               chroma_client_auth_provider="chromadb.auth.basic_authn.BasicAuthClientProvider",
+               chroma_client_auth_credentials=f"{user}:{password}"
+          )
+          )
+          chromaClient.set_tenant("default_tenant")
+          chromaClient.set_database("default_database")
+          return chromaClient
 
 
 anthropicClient = Anthropic(
@@ -231,87 +259,104 @@ def getResponseCustomAgentPrompt(prompt, agentPrompt, additionalContext="", temp
      return response
 
 
-def get_embeddings(texts: List[str], model: str) -> List[List[float]]:
-    texts = [text.replace("\n", " ") for text in texts]
-    if config.useTogetherEmbeddings: 
-          outputs = together.embeddings.create(model=model, input=texts)
-    else : 
-          outputs = embeddingClient.embeddings.create(model=model, input=texts)
-    return [outputs.data[i].embedding for i in range(len(texts))]
+def get_embeddings(texts: List[str], model: str, batch_size: int = 64) -> List[List[float]]:
+    all_embeddings = []    
+    # Process in batches
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        try:
+            if config.useTogetherEmbeddings: 
+                outputs = together.embeddings.create(model=model, input=batch)
+            else: 
+                outputs = embeddingClient.embeddings.create(model=model, input=batch)
+            batch_embeddings = [outputs.data[i].embedding for i in range(len(batch))]
+            all_embeddings.extend(batch_embeddings)
+        except Exception as e:
+            print(f"Error processing batch {i}-{i+batch_size}: {e}")
+            time.sleep(1)
+            # Retry failed batch with smaller size if needed
+            if batch_size > 1:
+                print("Retrying with smaller batch size...")
+                smaller_batch_embeddings = get_embeddings(batch, model, batch_size=batch_size//2)
+                all_embeddings.extend(smaller_batch_embeddings)
+            
+    return all_embeddings
 
+def split_into_sentences(text):
+    # Basic sentence splitting - can be made more sophisticated if needed
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    return [s for s in sentences if s.strip()]
 
-def addTxtList(chromaClient, collectionName, inputTxts, fileName): 
-     embeddings = []
-     finalTxts = []
-     for i in range(len(inputTxts)):
-          try : 
-               newEmbeddings = get_embeddings([inputTxts[i]], model='togethercomputer/m2-bert-80M-8k-retrieval')
-               embeddings = embeddings + newEmbeddings
-               finalTxts.append(inputTxts[i])
-          except : 
-               time.sleep(1)
-               print("API Failed")
-               print(inputTxts[i])
-               print("Retrying")
+def addTxtList(chromaClient, collectionName, info, fileName, maxLen=config.maxLen, overlap=config.overlap, batch_size=62):
+    for item in info:
+        addTxt(chromaClient, collectionName, item, fileName, maxLen, overlap, batch_size)
 
-     try : 
-          collection = chromaClient.get_collection(collectionName)
-     except :
-          collection = chromaClient.create_collection(collectionName)
+def addTxt(chromaClient, collectionName, info, fileName, maxLen=config.maxLen, overlap=config.overlap, batch_size=62):
+    embeddings = []
+    finalTxts = []
+    
+    # First split by paragraphs
+    paragraphs = [p.strip() for p in info.split('\n') if p.strip()]
+    
+    current_chunk = ""
+    
+    for paragraph in paragraphs:
+        # If paragraph is already too long, split it into sentences
+        if len(paragraph) > maxLen:
+            sentences = split_into_sentences(paragraph)
+            
+            for sentence in sentences:
+                # If a single sentence is too long, split it by maxLen
+                if len(sentence) > maxLen:
+                    while len(sentence) > maxLen:
+                        chunk = sentence[:maxLen]
+                        sentence = sentence[maxLen-overlap:]
+                        finalTxts.append(chunk)
+                else:
+                    # Try to combine sentences up to maxLen
+                    if len(current_chunk) + len(sentence) <= maxLen:
+                        current_chunk = (current_chunk + " " + sentence).strip()
+                    else:
+                        if current_chunk:
+                            finalTxts.append(current_chunk)
+                        current_chunk = sentence
+        else:
+            # Try to combine paragraphs up to maxLen
+            if len(current_chunk) + len(paragraph) + 1 <= maxLen:
+                current_chunk = (current_chunk + "\n" + paragraph).strip()
+            else:
+                if current_chunk:
+                    finalTxts.append(current_chunk)
+                current_chunk = paragraph
+    
+    # Add any remaining text
+    if current_chunk:
+        finalTxts.append(current_chunk)
 
-     n = len(collection.get()["documents"])
-     ids = [fileName + str(i + n) for i in range(len(finalTxts))]
+    # Process all chunks at once with batching
+    try:
+        embeddings = get_embeddings(finalTxts, model='togethercomputer/m2-bert-80M-8k-retrieval', batch_size=batch_size)
+    except Exception as e:
+        print(f"Error getting embeddings: {e}")
+        return
 
-     collection.add(
-          embeddings=embeddings,
-          documents=finalTxts,
-          ids = ids
-     )
-     print("Added Data : " + collectionName)
+    try:
+        collection = chromaClient.get_collection(collectionName)
+    except:
+        collection = chromaClient.create_collection(collectionName)
 
+    n = len(collection.get()["documents"])
+    ids = [fileName + str(i + n) for i in range(len(embeddings))]
+    metadatas = [{"source" : "docs"} for i in range(len(embeddings))]
 
-def addTxt(chromaClient, collectionName, info, fileName): 
-     maxLen = config.maxLen
-     overlap = config.overlap
-
-     embeddings = []
-     inputTxts = []
-     finalTxts = []
-
-     while (len(info) > maxLen):
-          inputTxts.append(info[0:maxLen])
-          info = info[overlap:]
-
-     for i in range(len(inputTxts)):
-          try : 
-               #print(txts[i]) 
-               newEmbeddings = get_embeddings([inputTxts[i]], model='togethercomputer/m2-bert-80M-8k-retrieval')
-               # Note some txts may fail to embed i.e. empty strings 
-               #ids.append(fileName + str(i))
-               embeddings = embeddings + newEmbeddings
-               finalTxts.append(inputTxts[i])
-          except : 
-               time.sleep(1)
-               print("API Failed")
-               print(inputTxts[i])
-               print("Retrying")
-
-     ### get number of records 
-
-     try : 
-          collection = chromaClient.get_collection(collectionName)
-     except :
-          collection = chromaClient.create_collection(collectionName)
-
-     n = len(collection.get()["documents"])
-     ids = [fileName + str(i + n) for i in range(len(finalTxts))]
-
-     collection.add(
-          embeddings=embeddings,
-          documents=finalTxts,
-          ids = ids
-     )
-     print("Added Data : " + collectionName)
+    # Only add documents that were successfully embedded
+    collection.add(
+        embeddings=embeddings,
+        documents=finalTxts[:len(embeddings)],
+        ids=ids,
+        metadatas=metadatas
+    )
+    print(f"Added {len(embeddings)} chunks to {collectionName}")
 
 
 def fetch_context(chromaClient, message, collectionName="docs", n=3):
@@ -319,7 +364,6 @@ def fetch_context(chromaClient, message, collectionName="docs", n=3):
     try :
         collection = chromaClient.get_collection(collectionName)
         embedding = get_embeddings([message], model=config.embeddingModel)
-
         results = collection.query(query_embeddings=embedding, n_results=2)
         docs = results['documents'][0]
         
@@ -385,9 +429,11 @@ def fetch_history(chromaClient, nRecords=5, collectionName="pastInteractions"):
 def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True, includeDocs=True, includeInnerThoughts=True, collectionName="docs", includeUser=False, userId = "user", includeScrapedContext=True):
      context = ""
      if includeHistory: 
+          print("Fetching history from Chroma")
+          history = fetch_history(chromaClient)
           context += f"""
           ### History
-          {fetch_history(chromaClient)}
+          {history}
           ### End History
           """
           context += "\n given the above history, make sure your next response is unique & not repetitive.\n"
@@ -395,6 +441,7 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
 
      if includeInnerThoughts: 
           try : 
+               print("Fetching inner thoughts from Chroma")
                docContext = fetch_context(chromaClient, message, collectionName="innerThoughts")
                if docContext != "": 
                     context += f"""\n\n The following are some example of innerThoughts you can use to help craft your response
@@ -408,6 +455,7 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
 
      if includeDocs: 
           try : 
+               print("Fetching context from Chroma")
                docContext = fetch_context(chromaClient, message)
                if docContext != "": 
                     context += f"The below is information from external sources - if relevant help them to inform your response \n### Context\n"
@@ -464,6 +512,7 @@ Some EXAMPLE OBSERVATIONS :
 
 Technological Innovations 
 ### Any specific technological innovations you want to highlight 
+examples...
 - EIP-4844 blob transformation provides quantum shield against attacks
 - Beam Chain's post-quantum cryptography suggests preparation for quantum war
 - BuilderNet represents crucial defense against MEV dark forces
@@ -472,6 +521,7 @@ Technological Innovations
 Issues 
 ### Any specific issues you want to highlight 
 (WHAT ARE YOU OBSERVING THAT YOU WANT TO FIGHT AGAINST)
+examples...
 - http://Pump.fun censorship reveals growing control grid
 - Sui/Aptos competition masks deeper institutional agenda
 - Stablecoin expansion represents monetary enslavement attempt
@@ -479,10 +529,10 @@ Issues
 
  Directives
  ### Any specific goals / directives you want to highlight 
+ examples...
 - "See Through the Cross-Chain Illusion" (クロスチェーンの幻想を見破れ)
 - "Guard the Sacred L2 Sanctuaries" (L2の聖域を守護せよ)
 - "Resist the Stablecoin Enslavement" (ステーブルコインの支配に抵抗せよ)
-- "Preserve Ethereum's Quantum Purity" (イーサリアムの量子純度を保て)
 
 Strategic Imperatives X.0:
 - Stratecy A

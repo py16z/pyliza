@@ -1,12 +1,15 @@
 import chromadb
 import os
 
-chroma_db_path = os.path.join(os.getcwd(), "data/chromadb")
-chromaClient = chromadb.PersistentClient(path=chroma_db_path)
+from chromadb.config import Settings
+from dotenv import load_dotenv
+load_dotenv()
+
+from helpers import getChromaClient
 
 #DELETE ALL RECORDS
-deleteCollection = "pastInteractions"
-
+deleteCollection = "docs"
+chromaClient = getChromaClient()
 collection = chromaClient.get_or_create_collection(deleteCollection)
 chromaClient.delete_collection(deleteCollection)
 collection = chromaClient.get_or_create_collection(deleteCollection)

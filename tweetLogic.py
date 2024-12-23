@@ -4,7 +4,7 @@ import sys
 from twitter.twitterClient import TwitterClient
 from twitter.twitterInteractions import TwitterInteractionHandler
 
-from helpers import getResponse, prepareContext, log_message, reflectThoughts, getUserContext, updateUserContext, fetch_context, fetch_history, getCurrentThoughts, updatePersona
+from helpers import getResponse, prepareContext, log_message, reflectThoughts, getUserContext, updateUserContext, fetch_context, fetch_history, getCurrentThoughts, updatePersona, getChromaClient
 
 import chromadb
 
@@ -21,13 +21,12 @@ from scrape import updateContext
 
 from search import search
 
-chroma_db_path = os.path.join(os.getcwd(), "data/chromadb")
-chromaClient = chromadb.PersistentClient(path=chroma_db_path)
+chromaClient = getChromaClient()
 
 def runTweetLoop(): 
 
     if not config.TESTMODE:
-        ponderThoughts()
+        # ponderThoughts()
         try : 
             # NOTE : Need to have logic set up for monitoring events + mapping to functions
             logs = monitorChain()
@@ -39,12 +38,10 @@ def runTweetLoop():
             print("Skipping queued tweets")
     
     search_tweets()
-    r = random.randint(0, 100)
     
-    if r < 40 : 
-        #reply_topics()
-        pass
-    elif r < 60 : 
+    r = random.randint(0, 100)
+
+    if r < 10 : 
         reply_to_followers()
     else:
         reply_guy()
@@ -264,11 +261,20 @@ def tweet_to_followers():
         print(f"Error: {e}")
 
 def reply_guy():
+    tracker = json.load(open("data/last_tweet.json"))
+    last_search_time = tracker["last_reply"]
+
+    if time.time() - last_search_time < config.replyGuyFrequency:
+        print("Not searching tweets, too soon...")
+        return
     print("Replying to reply guy targets...")
     try:
         client, interaction_handler = initTwitterClients(chromaClient)
         context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
         interaction_handler.reply_guy(additionalContext=context)
+        tracker["last_reply"] = time.time()
+        with open("data/last_tweet.json", "w") as f:
+            json.dump(tracker, f, indent=4)
 
     except Exception as e:
         print(f"Error: {e}")    
@@ -285,10 +291,23 @@ def reply_to_followers():
 
 
 def search_tweets():
+
+    tracker = json.load(open("data/last_tweet.json"))
+    last_search_time = tracker["last_search"]
+    
+
+    if time.time() - last_search_time < config.searchFrequency:
+        print("Not searching tweets, too soon...")
+        return
+    
     try:
         client, interaction_handler = initTwitterClients(chromaClient)
         context = prepareContext(getCurrentThoughts(), chromaClient, thoughtProcess=getCurrentThoughts())
         interaction_handler.monitor_mentions(additionalContext=context)
+
+        tracker["last_search"] = time.time()
+        with open("data/last_tweet.json", "w") as f:
+            json.dump(tracker, f, indent=4)
 
     except Exception as e:
         print(f"Error: {e}")

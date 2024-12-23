@@ -16,10 +16,6 @@ import config
 import json
 
 from scrape import updateContext
-
-chroma_db_path = os.path.join(os.getcwd(), "data/chromadb")
-chromaClient = chromadb.PersistentClient(path=chroma_db_path)
-
 from tweetLogic import runTweetLoop
 
 app = FastAPI()
@@ -48,4 +44,4 @@ while True:
     end_time = time.time()
     duration = end_time - start_time
     print(f"Time taken: {duration} seconds")
-    time.sleep(max(60, 180 - duration))
+    time.sleep(max(60, 120 - duration))
