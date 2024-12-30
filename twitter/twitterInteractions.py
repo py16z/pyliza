@@ -56,10 +56,12 @@ class TwitterInteractionHandler:
         if self.chroma_client:
             client = self.chroma_client
             collection = client.get_or_create_collection("tweet_responses")
+            emptyEmbedding = [0] * 1536
             collection.add(
                 ids = [original_tweet_id],
                 documents = [tweet_content],
-                metadatas = [log_entry]
+                metadatas = [log_entry],
+                embeddings = [emptyEmbedding]
             )
             print("Successfully logged response to Chroma DB")
 

@@ -3,12 +3,9 @@ import json
 from twitter.twitterClient import TwitterClient
 from twitter.twitterInteractions import TwitterInteractionHandler
 
-from helpers import getResponse
+from helpers import getResponse, chromaClient
 
 import chromadb
-
-chroma_db_path = os.path.join(os.getcwd(), "chromadb")
-chromaClient = chromadb.PersistentClient(path=chroma_db_path)
 
 def main():
     print("Initializing Twitter client...")

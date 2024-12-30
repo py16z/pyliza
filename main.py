@@ -32,6 +32,20 @@ async def hello_fly():
 # bot = discord.Client(intents=intents)
 
 
+# @bot.event
+# async def on_ready():
+#     print(f"Logged in as {bot.user}")
+
+
+# @bot.event
+# async def on_message(message):
+#     print(f"Received message: {message.content}")
+#     if message.author == bot.user:
+#         return
+#     ### TO DO - add discord logic here for responding to messages 
+
+
+
 
 while True:
 

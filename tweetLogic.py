@@ -10,6 +10,7 @@ import chromadb
 
 import time
 from dotenv import load_dotenv
+from context.marketData import getMarketData
 
 import config
 
@@ -25,6 +26,7 @@ chromaClient = getChromaClient()
 
 def runTweetLoop(): 
 
+    updateMarketData()
     if not config.TESTMODE:
         # ponderThoughts()
         try : 
@@ -76,6 +78,24 @@ def checkQueuedTweets():
     except Exception as e:
         print(f"Error: {e}")
         return False
+
+def updateMarketData():
+    try : 
+        timeSinceLastUpdate = time.time() - json.load(open("data/last_tweet.json"))["last_market_update"]
+        if timeSinceLastUpdate < config.marketUpdateFrequency:
+            print("Not updating market data, too soon...")
+            return
+    except Exception as e:
+        print(f"Error: {e}")
+
+    marketData = getMarketData()
+    with open("data/context.json", "w") as f:
+        json.dump({"marketData": marketData}, f)
+    last_tweet = json.load(open("data/last_tweet.json"))
+    last_tweet["last_market_update"] = time.time()
+
+    with open("data/last_tweet.json", "w") as f:
+        json.dump(last_tweet, f, indent=4)
 
 def processQueuedTweets():
     try : 

@@ -476,6 +476,13 @@ def prepareContext(message, chromaClient, thoughtProcess="",includeHistory=True,
                     context += item + "\n"
 
                context += "\n### End Scraped Context"
+
+               try : 
+                    marketData = context["marketData"]
+                    context += marketData
+               except Exception as e:
+                    print(e)
+
           except Exception as e:
                print(e)
 
@@ -680,7 +687,8 @@ def updateUserContext(chromaClient, userId, interaction, userName, collectionNam
 
      collection = chromaClient.get_or_create_collection(collectionName)
      # Use the 'upsert' method if available, or handle overwriting manually
-     collection.add(documents=[response], ids=[userId])
+     emptyEmbedding = [0] * 1536
+     collection.add(documents=[response], ids=[userId], embeddings=[emptyEmbedding])
      #print("UPDATED CONTEXT: ", response)
 
      
